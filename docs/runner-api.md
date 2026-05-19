@@ -189,7 +189,7 @@ export type RunnerTaskSession = {
 };
 ```
 
-`harnessState` is opaque to the runner. The runner stores whatever the harness returns after a step and passes it back on the next step.
+`harnessState` is opaque to the runner. The runner stores whatever state the harness returns after a step and passes it back on the next step. If a step output omits `nextHarnessState`, the runner keeps the previous state.
 
 ## execution flow
 
@@ -204,7 +204,7 @@ For each task attempt, the runner should:
    * write the exact input instruction to artifacts
    * call `harness.runStep(...)` with the session and step instruction
    * collect harness output
-   * store `output.nextHarnessState` on the session
+   * store `output.nextHarnessState` on the session if provided
    * capture workspace diff
    * run step checks
    * score the step

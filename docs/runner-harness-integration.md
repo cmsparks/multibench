@@ -55,7 +55,7 @@ CLI
       for each step:
         write runner step input artifact
         harness.runStep({ session, step })
-        session.harnessState = output.nextHarnessState
+        if output.nextHarnessState is present, update session.harnessState
         write harness output artifact
         capture workspace diff
         run step checks
@@ -105,7 +105,9 @@ const output = await harness.runStep({
   },
 });
 
-session.harnessState = output.nextHarnessState;
+if ("nextHarnessState" in output) {
+  session.harnessState = output.nextHarnessState;
+}
 ```
 
 Important: `workspaceDir` and `artifactsDir` are session-level values created by the runner. They do not appear directly on the step object because they do not change within a task attempt.
@@ -147,7 +149,7 @@ const session = {
   metadata: {},
 };
 
-session.harnessState = (await harness.runStep({
+const firstOutput = await harness.runStep({
   session,
   step: {
     id: "add-touch2",
@@ -155,9 +157,10 @@ session.harnessState = (await harness.runStep({
     instruction: "Add a TOUCH2 command...",
     timeoutMs: 900_000,
   },
-})).nextHarnessState;
+});
+if ("nextHarnessState" in firstOutput) session.harnessState = firstOutput.nextHarnessState;
 
-session.harnessState = (await harness.runStep({
+const secondOutput = await harness.runStep({
   session,
   step: {
     id: "add-casmeta",
@@ -165,9 +168,10 @@ session.harnessState = (await harness.runStep({
     instruction: "Add a CASMETA command...",
     timeoutMs: 900_000,
   },
-})).nextHarnessState;
+});
+if ("nextHarnessState" in secondOutput) session.harnessState = secondOutput.nextHarnessState;
 
-session.harnessState = (await harness.runStep({
+const thirdOutput = await harness.runStep({
   session,
   step: {
     id: "remove-casmeta",
@@ -175,7 +179,8 @@ session.harnessState = (await harness.runStep({
     instruction: "Remove only CASMETA. Keep TOUCH2 working and tested.",
     timeoutMs: 900_000,
   },
-})).nextHarnessState;
+});
+if ("nextHarnessState" in thirdOutput) session.harnessState = thirdOutput.nextHarnessState;
 
 await harness.stop?.({ session, reason: "completed" });
 ```
@@ -291,7 +296,7 @@ The integration contract is that one task attempt maps to one runner-owned sessi
 
 The runner preserves this by passing the same session object into every `harness.runStep(...)` call for that attempt.
 
-The harness preserves native agent context by returning `nextHarnessState`, which the runner stores on `session.harnessState` and passes back on the next step.
+The harness preserves native agent context by returning `nextHarnessState`, which the runner stores on `session.harnessState` and passes back on the next step. If a step output omits `nextHarnessState`, the runner keeps the previous state.
 
 Native state can represent:
 

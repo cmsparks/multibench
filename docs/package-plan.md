@@ -167,7 +167,7 @@ Contains:
 
 The runner should depend on interfaces, not concrete harness implementations.
 
-The detailed runner API is documented in [runner-api.md](./runner-api.md). The runner and harness handoff is documented in [runner-harness-integration.md](./runner-harness-integration.md).
+The detailed runner API is documented in [runner-api.md](./runner-api.md).
 
 ### `@multibench/cli`
 
@@ -213,6 +213,8 @@ export default defineTask({
 ```
 
 CLI code should stay thin. Argument parsing and command formatting belong here; benchmark orchestration belongs in `@multibench/runner`.
+
+The detailed CLI API is documented in [cli-api.md](./cli-api.md).
 
 ## dependency direction
 

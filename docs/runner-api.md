@@ -191,6 +191,51 @@ export type RunnerTaskSession = {
 
 `harnessState` is opaque to the runner. The runner stores whatever state the harness returns after a step and passes it back on the next step. If a step output omits `nextHarnessState`, the runner keeps the previous state.
 
+## runner and harness handoff
+
+The runner owns benchmark orchestration, task-attempt sessions, and artifacts. The harness owns agent-specific step execution.
+
+The runner passes only execution-local information into the harness:
+
+```ts
+const session: RunnerTaskSession = {
+  attemptId,
+  taskId: task.id,
+  taskTitle: task.title,
+  taskDir: loadedTask.taskDir,
+  workspaceDir,
+  artifactsDir: harnessArtifactsDir,
+  metadata: {
+    attemptIndex,
+    taskFile: loadedTask.file,
+  },
+};
+```
+
+Then, for each step:
+
+```ts
+const output = await harness.runStep({
+  session,
+  step: {
+    id: step.id,
+    index: stepIndex,
+    instruction: step.instruction,
+    timeoutMs: resolvedStepTimeoutMs,
+    attachments: step.attachments,
+    metadata: {
+      checks: step.checks.map((check) => check.id),
+    },
+  },
+});
+
+if ("nextHarnessState" in output) {
+  session.harnessState = output.nextHarnessState;
+}
+```
+
+`workspaceDir` and `artifactsDir` are session-level values created by the runner. They do not appear directly on the step object because they do not change within a task attempt.
+
 ## execution flow
 
 For each task attempt, the runner should:
@@ -216,6 +261,36 @@ For each task attempt, the runner should:
 
 The harness artifact directory is stored on the runner-owned session as `artifactsDir`. The harness may write raw logs and native session data there, but the runner still owns the overall results layout.
 
+The high-level call sequence is:
+
+```text
+runSuite(...)
+  discoverTasks(...)
+  loadTask(...)
+
+  for each task attempt:
+    prepare workspace
+    create attempt artifacts
+    create harness artifacts dir
+    create runner task-attempt session
+
+    for each step:
+      write runner step input artifact
+      harness.runStep({ session, step })
+      if output.nextHarnessState is present, update session.harnessState
+      write harness output artifact
+      capture workspace diff
+      run step checks
+      score step
+
+    run final checks
+    score task attempt
+    harness.stop?.({ session, reason: "completed" })
+
+  harness.shutdown?.()
+  aggregate suite result
+```
+
 ## workspace preparation
 
 The task definition should describe the source workspace:
@@ -236,6 +311,15 @@ The runner materializes this into an isolated attempt workspace:
 The workspace should be treated as disposable. Checks should run against this workspace. The runner should capture diffs from a clean baseline after every step.
 
 Open question: workspace directories may eventually live under the run directory instead of `.multibench/workspaces`. Keeping them separate can make cleanup easier when result artifacts are archived.
+
+For step attachments, the recommended default is:
+
+* resolve attachment paths relative to the task directory
+* copy attachments into a stable `evidence/` directory inside the workspace
+* pass the workspace-relative attachment path to `harness.runStep(...)`
+* let harnesses add path references to the native agent prompt if the agent lacks attachment support
+
+This keeps attachment handling deterministic and avoids each harness inventing its own file layout.
 
 ## checks
 
@@ -319,6 +403,17 @@ For v0, a simple default is acceptable:
 
 Tasks can later define richer scoring rules in code.
 
+Checks are runner-owned and run after `harness.runStep(...)` returns:
+
+```text
+harness.runStep(add-touch2)
+capture diff
+run tests/touch2.test.ts
+score add-touch2
+```
+
+The harness may run tests as part of its own agent behavior, but those do not count as benchmark checks. Only runner-executed checks are authoritative.
+
 ## result artifacts
 
 The runner should write enough data to debug and compare runs without rerunning them.
@@ -357,6 +452,8 @@ Recommended layout:
 ```
 
 The runner writes the canonical result files. The harness may write inside `harness/`.
+
+Harnesses should not write outside `session.artifactsDir`. The runner may copy or summarize harness outputs into canonical artifacts, but runner-owned files remain the source of truth for scoring and aggregation.
 
 ## result types
 
@@ -433,6 +530,18 @@ export type RunnerTimeouts = {
 ```
 
 If a step times out, the runner should call `harness.stop({ session, reason: "timed-out" })` when available, mark the step as timed out, run any configured cleanup, and then decide whether the task can continue. For v0, a timed-out step should fail the attempt and skip remaining steps.
+
+If `harness.runStep(...)` returns `failed` or `timed-out`, the runner should:
+
+1. record the step status
+2. write available harness output
+3. store any returned `nextHarnessState`
+4. capture the workspace diff if possible
+5. run or skip checks according to policy
+6. score the step
+7. for v0, stop the attempt and call `harness.stop(...)`
+
+Harnesses should return structured failures when possible. They should throw only for adapter bugs or unrecoverable setup errors. Normal agent failures should become `HarnessStepOutput`.
 
 ## concurrency
 

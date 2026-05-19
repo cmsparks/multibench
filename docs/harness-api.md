@@ -65,6 +65,7 @@ The runner calls the harness in this order:
 export type Harness = {
   name: string;
   version?: string;
+  config?: unknown;
 
   runStep: (input: HarnessRunStepInput) => Promise<HarnessStepOutput>;
 
@@ -81,14 +82,14 @@ export function defineHarness(harness: Harness): Harness {
 }
 ```
 
-Harness construction is outside the runner contract. A concrete harness can be a plain object, a configured object, or an instance created by harness-specific code. The runner only requires a `Harness`.
+There is no separate harness factory in the multibench API. A concrete harness is a `Harness` object. If a harness needs configuration, that configuration should be captured by the harness object itself or read from its environment. The runner only receives the `Harness` object.
 
 ## runner-owned session context
 
 The runner creates and persists the task-attempt session. That session has stable paths and an opaque harness state value.
 
 ```ts
-export type HarnessTaskSession = {
+export type RunnerTaskSession = {
   attemptId: string;
   taskId: string;
   taskTitle: string;
@@ -107,13 +108,23 @@ The runner owns run-level bookkeeping such as `runId`, `resultsDir`, result aggr
 
 `harnessState` is opaque to the runner. The runner stores it after each step and passes it back to the same harness on the next step. Harnesses use it for native session ids, process handles, SDK continuation tokens, or mock transcript state.
 
+Native state can represent:
+
+* native session id
+* `--resume` token
+* persistent process handle id
+* SDK continuation value
+* mock transcript state
+
+For Claude Code, the first step creates or discovers the native Claude session id. Later steps resume that session. This is how multibench evaluates long-context steering rather than isolated one-shot tasks.
+
 ## running a step
 
 Each scripted user message is sent through `runStep(...)`.
 
 ```ts
 export type HarnessRunStepInput = {
-  session: HarnessTaskSession;
+  session: RunnerTaskSession;
   step: {
     id: string;
     index: number;
@@ -182,7 +193,7 @@ The runner may ask the harness to stop native work for a runner-owned session.
 
 ```ts
 export type HarnessStopInput = {
-  session: HarnessTaskSession;
+  session: RunnerTaskSession;
   reason: "completed" | "failed" | "timed-out" | "cancelled";
 };
 ```
@@ -247,24 +258,17 @@ The Claude Code harness can be a configured object:
 export const claudeCodeHarness = defineHarness({
   name: "claude-code",
   version: "...",
+  config: {
+    model: "claude-sonnet-4-5",
+    permissionMode: "bypassPermissions",
+  },
   async runStep(input) {
     // implementation
   },
 });
 ```
 
-If the implementation needs config, it can close over it locally. That setup is not part of the runner contract.
-
-```ts
-export function createClaudeCodeHarness(config: ClaudeCodeHarnessConfig): Harness {
-  return defineHarness({
-    name: "claude-code",
-    async runStep(input) {
-      // use config here
-    },
-  });
-}
-```
+`config` here is harness-specific metadata. The runner may record it for comparability, but it does not interpret it.
 
 ### native state
 

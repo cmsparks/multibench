@@ -1,0 +1,6 @@
+node_modules/
+dist/
+coverage/
+.multibench/
+*.tsbuildinfo
+.DS_Store

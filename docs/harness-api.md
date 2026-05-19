@@ -67,6 +67,7 @@ export type Harness = {
   version?: string;
   config?: unknown;
 
+  configure?: (options: unknown) => void | Promise<void>;
   runStep: (input: HarnessRunStepInput) => Promise<HarnessStepOutput>;
 
   stop?: (input: HarnessStopInput) => Promise<void>;
@@ -82,7 +83,7 @@ export function defineHarness(harness: Harness): Harness {
 }
 ```
 
-There is no separate harness factory in the multibench API. A concrete harness is a `Harness` object. If a harness needs configuration, that configuration should be captured by the harness object itself or read from its environment. The runner only receives the `Harness` object.
+There is no separate harness factory in the multibench API. A concrete harness is a `Harness` object. If a harness needs CLI-provided configuration, it may expose `configure(...)`; otherwise configuration can be captured by the harness object itself or read from its environment. The runner only receives the `Harness` object.
 
 ## runner-owned session context
 
@@ -94,7 +95,10 @@ export type RunnerTaskSession = {
   taskId: string;
   taskTitle: string;
   workspaceDir: string;
+  containerWorkspaceDir: string;
   artifactsDir: string;
+  containerArtifactsDir: string;
+  containerId: string;
   taskDir: string;
   metadata: Record<string, unknown>;
 
@@ -102,9 +106,11 @@ export type RunnerTaskSession = {
 };
 ```
 
-`workspaceDir` and `artifactsDir` are session-level paths. They do not change between steps. A task attempt is one continuous runner-owned session over one workspace, with one harness artifact root.
+`workspaceDir`, `containerWorkspaceDir`, `artifactsDir`, `containerArtifactsDir`, and `containerId` are session-level values. They do not change between steps. A task attempt is one continuous runner-owned session over one isolated container and workspace, with one harness artifact root.
 
-The runner owns run-level bookkeeping such as `runId`, `resultsDir`, result aggregation, and the final artifact layout. The harness receives only the task attempt workspace and the harness-specific artifact directory where it may write raw logs or native session data.
+The runner owns run-level bookkeeping such as `runId`, `resultsDir`, result aggregation, Docker image/container lifecycle, and the final artifact layout. The harness receives only the task attempt workspace/container context and the harness-specific artifact directory where it may write raw logs or native session data.
+
+Harnesses should execute agent work inside the attempt container. A CLI harness will usually invoke `docker exec` using `containerId` and `containerWorkspaceDir`.
 
 `harnessState` is opaque to the runner. The runner stores it after each step and passes it back to the same harness on the next step. Harnesses use it for native session ids, process handles, SDK continuation tokens, or mock transcript state.
 
@@ -262,13 +268,16 @@ export const claudeCodeHarness = defineHarness({
     model: "claude-sonnet-4-5",
     permissionMode: "bypassPermissions",
   },
+  configure(options) {
+    this.config = validateClaudeOptions(options);
+  },
   async runStep(input) {
     // implementation
   },
 });
 ```
 
-`config` here is harness-specific metadata. The runner may record it for comparability, but it does not interpret it.
+`config` here is harness-specific metadata. The runner may record it for comparability, but it does not interpret it. The CLI may call `configure(...)` with parsed `--harness.*` options before passing the harness to the runner.
 
 ### native state
 
@@ -302,7 +311,7 @@ First step:
 const messages = query({
   prompt: input.step.instruction,
   options: {
-    cwd: input.session.workspaceDir,
+    cwd: input.session.containerWorkspaceDir,
     model: config.model,
     maxTurns: config.maxTurns,
     permissionMode: config.permissionMode,
@@ -318,7 +327,7 @@ const state = input.session.harnessState as ClaudeCodeHarnessState | undefined;
 const messages = query({
   prompt: input.step.instruction,
   options: {
-    cwd: input.session.workspaceDir,
+    cwd: input.session.containerWorkspaceDir,
     resume: state?.claudeSessionId,
     model: config.model,
     maxTurns: config.maxTurns,
@@ -331,25 +340,31 @@ const messages = query({
 First step:
 
 ```sh
-claude -p \
-  --output-format stream-json \
-  --permission-mode "$PERMISSION_MODE" \
-  --max-turns "$MAX_TURNS" \
-  "$INSTRUCTION"
+docker exec <container-id> sh -lc '
+  cd /workspace &&
+  claude -p \
+    --output-format stream-json \
+    --permission-mode "$PERMISSION_MODE" \
+    --max-turns "$MAX_TURNS" \
+    "$INSTRUCTION"
+'
 ```
 
 Later steps:
 
 ```sh
-claude -p \
-  --resume "$CLAUDE_SESSION_ID" \
-  --output-format stream-json \
-  --permission-mode "$PERMISSION_MODE" \
-  --max-turns "$MAX_TURNS" \
-  "$INSTRUCTION"
+docker exec <container-id> sh -lc '
+  cd /workspace &&
+  claude -p \
+    --resume "$CLAUDE_SESSION_ID" \
+    --output-format stream-json \
+    --permission-mode "$PERMISSION_MODE" \
+    --max-turns "$MAX_TURNS" \
+    "$INSTRUCTION"
+'
 ```
 
-The process working directory must be `input.session.workspaceDir`. The harness should parse stream-json events, write the raw stream under `input.session.artifactsDir`, and return the next Claude session id in `nextHarnessState`.
+The process working directory must be `input.session.containerWorkspaceDir` inside the attempt container. CLI mode should normally run Claude through `docker exec <container-id> ...`. The harness should parse stream-json events, write the raw stream under `input.session.artifactsDir` on the host or `input.session.containerArtifactsDir` inside the container, and return the next Claude session id in `nextHarnessState`.
 
 ## artifacts
 
@@ -376,6 +391,8 @@ session.artifactsDir/
   "harness": "claude-code",
   "nativeSessionId": "...",
   "workspaceDir": "...",
+  "containerWorkspaceDir": "/workspace",
+  "containerId": "...",
   "startedAt": "...",
   "stoppedAt": "..."
 }

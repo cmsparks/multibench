@@ -1,0 +1,22 @@
+{
+  "name": "@multibench/runner",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "typecheck": "tsc -b --pretty false"
+  },
+  "dependencies": {
+    "@multibench/core": "workspace:*",
+    "@multibench/harness": "workspace:*",
+    "@multibench/tasks": "workspace:*"
+  }
+}

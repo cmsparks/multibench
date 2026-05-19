@@ -9,7 +9,7 @@ The CLI should behave like a test runner: by default it discovers task files, co
 Primary command:
 
 ```sh
-multibench run [task-glob-or-path ...] [options] [-- harness-options...]
+multibench run [task-glob-or-path ...] [options]
 ```
 
 Examples:
@@ -19,7 +19,7 @@ multibench run
 multibench run tasks/memcached-command-rollback
 multibench run "tasks/**/*.task.ts"
 multibench run tasks --runs 3 --concurrent 2
-multibench run "tasks/**/*.task.ts" --harness claude-code -- --model claude-sonnet-4-5 --permission-mode bypassPermissions
+multibench run "tasks/**/*.task.ts" --harness ./harnesses/claude-code.harness.ts --harness.model claude-sonnet-4-5 --harness.api_key "$ANTHROPIC_API_KEY"
 ```
 
 The positional arguments are task globs or paths. If omitted, the CLI should use:
@@ -34,7 +34,8 @@ If a positional argument is a directory, the CLI should discover `**/*.task.ts` 
 
 ```text
 multibench run [task-glob-or-path ...]
-  --harness <name-or-module>
+  --harness <path-to-harness.ts>
+  --harness.<key> <value>
   --runs <n>
   --concurrent <n>
   --results-dir <path>
@@ -47,7 +48,6 @@ multibench run [task-glob-or-path ...]
   --dry-run
   --list
   --help
-  -- harness-options...
 ```
 
 Recommended aliases:
@@ -77,20 +77,19 @@ multibench run tasks/a.task.ts tasks/b.task.ts
 
 These map to `RunSuiteOptions.taskPatterns`.
 
-### `--harness <name-or-module>`
+### `--harness <path-to-harness.ts>`
 
-Selects the harness implementation.
+Selects the harness implementation file. This should be a path to a `.harness.ts` file.
 
 Examples:
 
 ```sh
-multibench run --harness claude-code
-multibench run --harness codex
-multibench run --harness ./harnesses/my-harness.ts
-multibench run --harness @company/multibench-harness
+multibench run --harness ./harnesses/claude-code.harness.ts
+multibench run --harness ./harnesses/codex.harness.ts
+multibench run --harness ../custom/my-agent.harness.ts
 ```
 
-The loaded module should export a `Harness` object, either as the default export or as a named `harness` export.
+The loaded module should export a `Harness` object, either as the default export or as a named `harness` export. The CLI should reject non-path harness specs for v0.
 
 Example:
 
@@ -106,6 +105,71 @@ export default defineHarness({
 ```
 
 The CLI should not require a separate harness factory. It loads a harness object and passes it to `runSuite(...)`.
+
+### `--harness.<key> <value>`
+
+Passes harness-specific options into the loaded harness.
+
+Examples:
+
+```sh
+multibench run tasks \
+  --harness ./harnesses/claude-code.harness.ts \
+  --harness.api_key "$ANTHROPIC_API_KEY" \
+  --harness.model claude-sonnet-4-5 \
+  --harness.permission_mode bypassPermissions \
+  --harness.max_turns 80
+```
+
+The CLI should parse dotted harness options into an object:
+
+```ts
+{
+  api_key: "...",
+  model: "claude-sonnet-4-5",
+  permission_mode: "bypassPermissions",
+  max_turns: 80,
+}
+```
+
+Values should be parsed conservatively:
+
+* `"true"` and `"false"` become booleans
+* numeric-looking values become numbers
+* repeated flags become arrays
+* everything else remains a string
+
+Nested dotted keys are allowed:
+
+```sh
+--harness.env.ANTHROPIC_BASE_URL https://example.test
+```
+
+parses to:
+
+```ts
+{
+  env: {
+    ANTHROPIC_BASE_URL: "https://example.test"
+  }
+}
+```
+
+The parsed object should be made available to the harness module before execution. Recommended convention:
+
+```ts
+export default defineHarness({
+  name: "claude-code",
+  async configure(options) {
+    // validate and store harness options
+  },
+  async runStep(input) {
+    // use configured options
+  },
+});
+```
+
+`configure(...)` is optional. If present, the CLI calls it once after loading the harness and before calling `runSuite(...)`. The runner still receives only the final `Harness` object.
 
 ### `--runs <n>`
 
@@ -182,21 +246,17 @@ Lists matched tasks and exits.
 
 This is equivalent to a lightweight `multibench list` mode.
 
-## arbitrary harness options
+## harness loading
 
-Harness options should be passed after `--`. The CLI should collect these tokens without interpreting them and pass them to the selected harness loader.
+The CLI should load exactly the `.harness.ts` file passed to `--harness`.
 
 Example:
 
 ```sh
 multibench run tasks \
-  --harness claude-code \
-  --runs 3 \
-  --concurrent 2 \
-  -- \
-  --model claude-sonnet-4-5 \
-  --permission-mode bypassPermissions \
-  --max-turns 80
+  --harness ./harnesses/claude-code.harness.ts \
+  --harness.api_key "$ANTHROPIC_API_KEY" \
+  --harness.model claude-sonnet-4-5
 ```
 
 The CLI parses:
@@ -204,14 +264,11 @@ The CLI parses:
 ```ts
 {
   taskPatterns: ["tasks"],
-  harness: "claude-code",
-  runs: 3,
-  concurrent: 2,
-  harnessArgs: [
-    "--model", "claude-sonnet-4-5",
-    "--permission-mode", "bypassPermissions",
-    "--max-turns", "80",
-  ],
+  harnessPath: "./harnesses/claude-code.harness.ts",
+  harnessOptions: {
+    api_key: "...",
+    model: "claude-sonnet-4-5",
+  },
 }
 ```
 
@@ -219,8 +276,8 @@ Then the CLI loads the harness:
 
 ```ts
 const harness = await loadHarness({
-  spec: "claude-code",
-  args: harnessArgs,
+  path: harnessPath,
+  options: harnessOptions,
   cwd,
   env: process.env,
 });
@@ -228,66 +285,47 @@ const harness = await loadHarness({
 
 `loadHarness(...)` is CLI-owned. The runner only receives the resulting `Harness` object.
 
-## harness loading
-
-The CLI should support built-in names and module paths.
-
-Resolution order:
-
-1. built-in harness alias, such as `claude-code`
-2. relative or absolute module path
-3. package import specifier
-
-Built-in aliases can map to local modules:
-
-```ts
-const builtinHarnesses = {
-  "claude-code": "@multibench/harness-claude-code",
-  codex: "@multibench/harness-codex",
-  mock: "@multibench/harness-mock",
-};
-```
-
-Harness modules can optionally export a CLI argument parser:
-
-```ts
-export function parseHarnessArgs(args: string[]): unknown {
-  return {
-    model: getArg(args, "--model"),
-    permissionMode: getArg(args, "--permission-mode"),
-  };
-}
-
-export function createHarness(config: unknown): Harness {
-  return defineHarness({
-    name: "claude-code",
-    config,
-    async runStep(input) {
-      // ...
-    },
-  });
-}
-```
-
-This factory is a CLI loading convention, not part of the runner/harness interface. From the runner's perspective, the final value is still just a `Harness`.
-
-For the simplest case, a module may export the harness directly:
+The loaded module should export a `Harness` object:
 
 ```ts
 export default defineHarness({
-  name: "mock",
+  name: "claude-code",
   async runStep(input) {
     // ...
   },
 });
 ```
 
+If the harness accepts options, it can expose an optional `configure(...)` method on the harness object:
+
+```ts
+export default defineHarness({
+  name: "claude-code",
+  config: {},
+  configure(options) {
+    this.config = validateClaudeOptions(options);
+  },
+  async runStep(input) {
+    // use this.config
+  },
+});
+```
+
+This keeps options attached to the harness object without adding a separate harness factory.
+
 Recommended module export resolution:
 
 1. if default export is a `Harness`, use it
 2. else if named `harness` export is a `Harness`, use it
-3. else if named `createHarness` export exists, call it with parsed harness config
-4. otherwise fail with a clear error
+3. otherwise fail with a clear error
+
+After loading the harness, if `configure(...)` exists, the CLI should call:
+
+```ts
+await harness.configure(harnessOptions);
+```
+
+Then it passes the configured harness object to the runner.
 
 ## mapping to runner options
 
@@ -337,5 +375,4 @@ Reads existing result artifacts and prints transcript, checks, scores, and artif
 ## open questions
 
 * Should `--runs` be renamed to `--attempts` for API consistency, or is `--runs` better for users?
-* Should harness args be only raw passthrough after `--`, or should built-in harnesses also expose typed top-level flags?
 * Should `--concurrent` apply across all attempts globally, or should there also be per-task concurrency limits?

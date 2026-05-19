@@ -12,7 +12,7 @@ The runner owns:
 * validating normalized task definitions
 * creating run ids and attempt ids
 * creating the run results directory
-* preparing isolated workspaces for task attempts
+* preparing isolated Docker containers and workspaces for task attempts
 * creating one runner-owned task-attempt session per attempt
 * sending each task step to the harness in order with that session context
 * running configured checks after each step
@@ -182,7 +182,10 @@ export type RunnerTaskSession = {
   taskId: string;
   taskTitle: string;
   workspaceDir: string;
+  containerWorkspaceDir: string;
   artifactsDir: string;
+  containerArtifactsDir: string;
+  containerId: string;
   taskDir: string;
   metadata: Record<string, unknown>;
   harnessState?: unknown;
@@ -204,7 +207,10 @@ const session: RunnerTaskSession = {
   taskTitle: task.title,
   taskDir: loadedTask.taskDir,
   workspaceDir,
+  containerWorkspaceDir,
   artifactsDir: harnessArtifactsDir,
+  containerArtifactsDir,
+  containerId,
   metadata: {
     attemptIndex,
     taskFile: loadedTask.file,
@@ -234,30 +240,32 @@ if ("nextHarnessState" in output) {
 }
 ```
 
-`workspaceDir` and `artifactsDir` are session-level values created by the runner. They do not appear directly on the step object because they do not change within a task attempt.
+`workspaceDir`, `containerWorkspaceDir`, `artifactsDir`, `containerArtifactsDir`, and `containerId` are session-level values created by the runner. They do not appear directly on the step object because they do not change within a task attempt.
 
 ## execution flow
 
 For each task attempt, the runner should:
 
 1. Create an `attemptId`.
-2. Prepare a clean workspace.
-3. Create an attempt artifact directory.
-4. Create a harness artifact directory inside the attempt directory.
-5. Create a runner-owned task-attempt session object.
-6. For each step:
+2. Build or reuse the task Docker image.
+3. Prepare a clean host workspace.
+4. Start an isolated container for the attempt.
+5. Mount or copy the workspace and harness artifact directory into the container.
+6. Create a runner-owned task-attempt session object.
+7. For each step:
    * write the exact input instruction to artifacts
    * call `harness.runStep(...)` with the session and step instruction
    * collect harness output
    * store `output.nextHarnessState` on the session if provided
    * capture workspace diff
-   * run step checks
+   * run step checks inside the container
    * score the step
    * write step artifacts
-7. Run final checks if the task defines them separately.
-8. Score the task.
-9. Call `harness.stop(...)` for the session if provided.
-10. Write the attempt result.
+8. Run final checks inside the container if the task defines them separately.
+9. Score the task.
+10. Call `harness.stop(...)` for the session if provided.
+11. Stop and remove the attempt container according to cleanup policy.
+12. Write the attempt result.
 
 The harness artifact directory is stored on the runner-owned session as `artifactsDir`. The harness may write raw logs and native session data there, but the runner still owns the overall results layout.
 
@@ -269,7 +277,10 @@ runSuite(...)
   loadTask(...)
 
   for each task attempt:
-    prepare workspace
+    build or reuse task image
+    prepare host workspace
+    start attempt container
+    mount workspace and artifacts
     create attempt artifacts
     create harness artifacts dir
     create runner task-attempt session
@@ -280,35 +291,70 @@ runSuite(...)
       if output.nextHarnessState is present, update session.harnessState
       write harness output artifact
       capture workspace diff
-      run step checks
+      run step checks inside container
       score step
 
-    run final checks
+    run final checks inside container
     score task attempt
     harness.stop?.({ session, reason: "completed" })
+    stop/remove attempt container
 
   harness.shutdown?.()
   aggregate suite result
 ```
 
-## workspace preparation
+## docker isolation
 
-The task definition should describe the source workspace:
+Every task attempt runs inside a Docker container. The task definition should describe both the source workspace and the Docker environment:
 
 ```ts
 export type WorkspaceSource =
   | { type: "fixture"; path: string }
   | { type: "git"; url: string; ref: string; submodules?: boolean }
   | { type: "archive"; path: string };
+
+export type DockerEnvironment = {
+  dockerfile?: string;
+  context?: string;
+  image?: string;
+  buildArgs?: Record<string, string>;
+  env?: Record<string, string>;
+  workingDir?: string;
+};
 ```
 
-The runner materializes this into an isolated attempt workspace:
+The runner materializes the source into an isolated host workspace:
 
 ```text
 .multibench/workspaces/<run-id>/<task-id>/<attempt-id>/
 ```
 
-The workspace should be treated as disposable. Checks should run against this workspace. The runner should capture diffs from a clean baseline after every step.
+Then it starts a container for the attempt and mounts or copies the workspace into a stable container path:
+
+```text
+/workspace
+```
+
+Harness artifacts should also be available inside the container:
+
+```text
+/artifacts/harness
+```
+
+Recommended path mapping:
+
+```ts
+{
+  workspaceDir: ".multibench/workspaces/<run-id>/<task-id>/<attempt-id>",
+  containerWorkspaceDir: "/workspace",
+  artifactsDir: ".multibench/results/<run-id>/tasks/<task-id>/attempts/<attempt-id>/harness",
+  containerArtifactsDir: "/artifacts/harness",
+}
+```
+
+The host workspace should be treated as disposable. The container should be treated as disposable. Checks should run inside the container against `containerWorkspaceDir`. The runner should capture diffs from the host workspace after each step.
+
+Harnesses should execute agent commands inside the container. For a CLI-based harness, this usually means wrapping commands with `docker exec` against `session.containerId` and using `session.containerWorkspaceDir` as the working directory. A harness should not mutate the host workspace directly unless it is explicitly implementing a container-aware mount strategy.
 
 Open question: workspace directories may eventually live under the run directory instead of `.multibench/workspaces`. Keeping them separate can make cleanup easier when result artifacts are archived.
 
@@ -335,6 +381,8 @@ export type CheckDefinition = {
 };
 ```
 
+Check commands run inside the attempt container. `cwd` is relative to `containerWorkspaceDir` unless it is an absolute container path.
+
 A step may reference one or more checks:
 
 ```ts
@@ -346,7 +394,7 @@ step({ id: "add-touch2", checks: ["tests/touch2.test.ts"] })`
 For TypeScript test checks, the runner can normalize paths into a command such as:
 
 ```sh
-vitest run tests/touch2.test.ts
+docker exec <container-id> sh -lc 'cd /workspace && vitest run tests/touch2.test.ts'
 ```
 
 For non-TypeScript tasks, checks can be explicit commands:
@@ -479,6 +527,8 @@ export type TaskAttemptResult = {
   attemptId: string;
   taskId: string;
   workspaceDir: string;
+  containerWorkspaceDir: string;
+  containerId: string;
   artifactDir: string;
   status: "completed" | "failed" | "timed-out" | "cancelled";
   steps: StepRunResult[];

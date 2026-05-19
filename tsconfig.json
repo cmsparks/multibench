@@ -1,0 +1,10 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/core" },
+    { "path": "./packages/harness" },
+    { "path": "./packages/tasks" },
+    { "path": "./packages/runner" },
+    { "path": "./packages/cli" }
+  ]
+}

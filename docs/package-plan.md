@@ -8,6 +8,8 @@ multibench should be organized as a TypeScript monorepo with small packages and 
 * `@multibench/runner` - benchmark execution engine
 * `@multibench/cli` - command-line interface
 
+The implementation checklist is tracked in [master-todo.md](./master-todo.md).
+
 ## repository structure
 
 ```text
@@ -55,6 +57,8 @@ harnesses/
 tasks/
   memcached-command-rollback/
     memcached-command-rollback.task.ts
+    Dockerfile
+    docker/
     tests/
     fixture/
 
@@ -91,6 +95,7 @@ Contains:
 * `defineTask(...)`
 * `step({ id, checks })\`...\``
 * repo and fixture helpers, such as `gitRepo(...)`
+* Docker environment helpers
 * check definition helpers
 * task normalization and validation
 
@@ -99,7 +104,7 @@ The `step(...)` tagged template should automatically deindent and trim instructi
 Example:
 
 ```ts
-import { defineTask, gitRepo, step } from "@multibench/tasks";
+import { defineTask, dockerEnvironment, gitRepo, step } from "@multibench/tasks";
 
 export default defineTask({
   id: "memcached-command-rollback",
@@ -108,6 +113,9 @@ export default defineTask({
   repo: gitRepo({
     url: "https://github.com/memcached/memcached",
     ref: "...",
+  }),
+  environment: dockerEnvironment({
+    dockerfile: "Dockerfile",
   }),
   instructions: [
     step({ id: "add-touch2", checks: ["tests/touch2.test.ts"] })`
@@ -243,5 +251,7 @@ Rules:
 ## notes
 
 The top-level `tasks/` directory contains benchmark tasks, not the `@multibench/tasks` package. The package provides the authoring API; the top-level directory contains the actual benchmark content. Benchmark task files should use the `*.task.ts` suffix so the CLI can discover them automatically.
+
+Every task must run inside a Docker container. Each task directory should provide either a `Dockerfile` at the task root or a Docker context under `docker/`. The runner builds the task image, creates an isolated container per attempt, mounts or copies the prepared workspace into that container, runs the harness against the container workspace, and runs checks inside the same container.
 
 The top-level `test/` directory tests multibench itself. Individual benchmark tasks keep their own task-specific checks under each task directory.

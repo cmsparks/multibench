@@ -18,6 +18,8 @@
     "typecheck": "tsc -b --pretty false"
   },
   "dependencies": {
+    "@multibench/core": "workspace:*",
+    "@multibench/harness": "workspace:*",
     "@multibench/runner": "workspace:*"
   }
 }

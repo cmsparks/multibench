@@ -4,10 +4,10 @@ This is the implementation checklist for multibench. It is organized by logicall
 
 Design references:
 
-* Package layout: [package-plan.md](./package-plan.md)
-* Runner API: [runner-api.md](./runner-api.md)
-* Harness API: [harness-api.md](./harness-api.md)
-* CLI API: [cli-api.md](./cli-api.md)
+- Package layout: [package-plan.md](./package-plan.md)
+- Runner API: [runner-api.md](./runner-api.md)
+- Harness API: [harness-api.md](./harness-api.md)
+- CLI API: [cli-api.md](./cli-api.md)
 
 ## 0. repo scaffold
 
@@ -16,7 +16,7 @@ Design references:
 - [x] Add root `tsconfig.json`.
 - [x] Add shared TypeScript config for packages.
 - [x] Add test runner configuration.
-- [ ] Add lint/format configuration.
+- [x] Add lint/format configuration.
 - [x] Add `.gitignore` entries for:
   - [x] `node_modules/`
   - [x] `dist/`
@@ -102,36 +102,36 @@ Design reference: [package-plan.md](./package-plan.md)
 
 Tasks:
 
-- [ ] Implement `defineTask(...)`.
-- [ ] Implement `step({ id, checks })\`...\``.
-- [ ] Use `deindent` inside `step(...)`.
-- [ ] Trim step text after deindent.
-- [ ] Reject template interpolation in step text.
-- [ ] Default omitted checks to `tests/${id}.test.ts`.
-- [ ] Implement `gitRepo(...)`.
-- [ ] Implement fixture/archive workspace helpers.
-- [ ] Implement `dockerEnvironment(...)`.
-- [ ] Normalize task definitions into core types.
-- [ ] Validate:
-  - [ ] task id
-  - [ ] title
-  - [ ] Docker environment
-  - [ ] instruction list
-  - [ ] unique step ids
-  - [ ] check references
-- [ ] Export all task authoring APIs from `@multibench/tasks`.
+- [x] Implement `defineTask(...)`.
+- [x] Implement `step({ id, checks })\`...\``.
+- [x] Use `deindent` inside `step(...)`.
+- [x] Trim step text after deindent.
+- [x] Reject template interpolation in step text.
+- [x] Default omitted checks to `tests/${id}.test.ts`.
+- [x] Implement `gitRepo(...)`.
+- [x] Implement fixture/archive workspace helpers.
+- [x] Implement `dockerEnvironment(...)`.
+- [x] Normalize task definitions into core types.
+- [x] Validate:
+  - [x] task id
+  - [x] title
+  - [x] Docker environment
+  - [x] instruction list
+  - [x] unique step ids
+  - [x] check references
+- [x] Export all task authoring APIs from `@multibench/tasks`.
 
 Tests:
 
-- [ ] `step(...)` deindents multiline template text.
-- [ ] `step(...)` trims leading/trailing blank lines.
-- [ ] `step(...)` rejects interpolation.
-- [ ] omitted checks default to `tests/<id>.test.ts`.
-- [ ] explicit checks are preserved.
-- [ ] `defineTask(...)` derives instruction count from steps.
-- [ ] duplicate step ids fail validation.
-- [ ] task without Docker environment fails validation.
-- [ ] task with `dockerEnvironment({ dockerfile: "Dockerfile" })` passes.
+- [x] `step(...)` deindents multiline template text.
+- [x] `step(...)` trims leading/trailing blank lines.
+- [x] `step(...)` rejects interpolation.
+- [x] omitted checks default to `tests/<id>.test.ts`.
+- [x] explicit checks are preserved.
+- [x] `defineTask(...)` derives instruction count from steps.
+- [x] duplicate step ids fail validation.
+- [x] task without Docker environment fails validation.
+- [x] task with `dockerEnvironment({ dockerfile: "Dockerfile" })` passes.
 
 ## 3. harness package
 
@@ -145,28 +145,28 @@ Design reference: [harness-api.md](./harness-api.md)
 
 Tasks:
 
-- [ ] Define `Harness`.
-- [ ] Define `HarnessRunStepInput`.
-- [ ] Define `HarnessStepOutput`.
-- [ ] Define `HarnessStopInput`.
-- [ ] Define `HarnessEvent`.
-- [ ] Define `HarnessAttachment`.
-- [ ] Implement `defineHarness(...)`.
-- [ ] Add runtime validation for harness shape.
-- [ ] Add helper for writing harness events JSONL.
-- [ ] Add mock harness implementation.
-- [ ] Add mock harness state carryover support.
-- [ ] Add utilities for resolving host/container paths if needed.
+- [x] Define `Harness`.
+- [x] Define `HarnessRunStepInput`.
+- [x] Define `HarnessStepOutput`.
+- [x] Define `HarnessStopInput`.
+- [x] Define `HarnessEvent`.
+- [x] Define `HarnessAttachment`.
+- [x] Implement `defineHarness(...)`.
+- [x] Add runtime validation for harness shape.
+- [x] Add helper for writing harness events JSONL.
+- [x] Add mock harness implementation.
+- [x] Add mock harness state carryover support.
+- [x] Add utilities for resolving host/container paths if needed.
 
 Tests:
 
-- [ ] `defineHarness(...)` returns a valid harness unchanged.
-- [ ] invalid harness object fails validation.
-- [ ] mock harness returns scripted step outputs.
-- [ ] mock harness receives the same runner session object across steps.
-- [ ] mock harness can return `nextHarnessState`.
-- [ ] runner-style state carryover works with mock harness.
-- [ ] event JSONL helper writes valid JSONL.
+- [x] `defineHarness(...)` returns a valid harness unchanged.
+- [x] invalid harness object fails validation.
+- [x] mock harness returns scripted step outputs.
+- [x] mock harness receives the same runner session object across steps.
+- [x] mock harness can return `nextHarnessState`.
+- [x] runner-style state carryover works with mock harness.
+- [x] event JSONL helper writes valid JSONL.
 
 ## 4. runner task discovery and loading
 
@@ -181,34 +181,33 @@ Design reference: [runner-api.md](./runner-api.md)
 
 Tasks:
 
-- [ ] Implement `discoverTasks(...)`.
-- [ ] Default pattern to `tasks/**/*.task.ts`.
-- [ ] Expand directory paths to `**/*.task.ts`.
-- [ ] Ignore `node_modules`, `dist`, and `.multibench`.
-- [ ] Implement `.task.ts` import/loading.
-- [ ] Support default export and reject missing default export.
-- [ ] Normalize loaded task through `@multibench/tasks`.
-- [ ] Return `LoadedTask` with:
-  - [ ] file path
-  - [ ] task directory
-  - [ ] normalized definition
-- [ ] Decide whether public API should expose:
-  - [ ] `loadTaskFile(...)`
-  - [ ] `runTaskFile(...)`
-  - [ ] `runLoadedTask(...)`
-  - [ ] `runSuite(...)`
-- [ ] Update [runner-api.md](./runner-api.md) once names are final.
+- [x] Implement `discoverTasks(...)`.
+- [x] Default pattern to `tasks/**/*.task.ts`.
+- [x] Expand directory paths to `**/*.task.ts`.
+- [x] Ignore `node_modules`, `dist`, and `.multibench`.
+- [x] Implement `.task.ts` import/loading.
+- [x] Support default export and reject missing default export.
+- [x] Normalize loaded task through `@multibench/tasks`.
+- [x] Return `LoadedTask` with:
+  - [x] file path
+  - [x] task directory
+  - [x] normalized definition
+- [x] Decide public API names:
+  - [x] `loadTask(...)`
+  - [x] `runTask(...)`
+  - [x] `runSuite(...)`
+- [x] Update [runner-api.md](./runner-api.md) once names are final.
 
 Tests:
 
-- [ ] no path discovers `tasks/**/*.task.ts`.
-- [ ] explicit file path loads one task.
-- [ ] directory path discovers nested task files.
-- [ ] glob discovers multiple task files.
-- [ ] ignored directories are ignored.
-- [ ] missing default export fails clearly.
-- [ ] invalid task definition fails clearly.
-- [ ] valid task file normalizes successfully.
+- [x] no path discovers `tasks/**/*.task.ts`.
+- [x] explicit file path loads one task.
+- [x] directory path discovers nested task files.
+- [x] glob discovers multiple task files.
+- [x] ignored directories are ignored.
+- [x] missing default export fails clearly.
+- [x] invalid task definition fails clearly.
+- [x] valid task file normalizes successfully.
 
 ## 5. Docker image and container lifecycle
 
@@ -223,37 +222,37 @@ Design reference: [runner-api.md#docker-isolation](./runner-api.md#docker-isolat
 
 Tasks:
 
-- [ ] Implement Docker availability check.
-- [ ] Implement task image build from task `Dockerfile`.
-- [ ] Implement task image build from `docker/` context.
-- [ ] Support prebuilt task image reference if configured.
-- [ ] Generate deterministic image tags per task file/ref hash.
-- [ ] Implement image build cache/reuse.
-- [ ] Materialize workspace source:
-  - [ ] fixture copy
-  - [ ] git clone at ref
-  - [ ] archive extract
-- [ ] Create attempt workspace under `.multibench/workspaces/<run-id>/<task-id>/<attempt-id>`.
-- [ ] Create attempt result directory.
-- [ ] Create harness artifact directory.
-- [ ] Start one container per attempt.
-- [ ] Mount or copy workspace to `/workspace`.
-- [ ] Mount or copy harness artifacts to `/artifacts/harness`.
-- [ ] Record `containerId`.
-- [ ] Stop/remove container on success.
-- [ ] Preserve container on failure when configured.
-- [ ] Add cleanup command or helper.
+- [x] Implement Docker availability check.
+- [x] Implement task image build from task `Dockerfile`.
+- [x] Implement task image build from `docker/` context.
+- [x] Support prebuilt task image reference if configured.
+- [x] Generate deterministic image tags per task file/ref hash.
+- [x] Implement image build cache/reuse.
+- [x] Materialize workspace source:
+  - [x] fixture copy
+  - [x] git clone at ref
+  - [x] archive extract
+- [x] Create attempt workspace under `.multibench/workspaces/<run-id>/<task-id>/<attempt-id>`.
+- [x] Create attempt result directory.
+- [x] Create harness artifact directory.
+- [x] Start one container per attempt.
+- [x] Mount or copy workspace to `/workspace`.
+- [x] Mount or copy harness artifacts to `/artifacts/harness`.
+- [x] Record `containerId`.
+- [x] Stop/remove container on success.
+- [x] Preserve container on failure when configured.
+- [x] Add cleanup command or helper.
 
 Tests:
 
-- [ ] image builds from root `Dockerfile`.
-- [ ] image builds from `docker/` context.
-- [ ] missing Docker environment fails before run.
-- [ ] workspace fixture appears at `/workspace` inside container.
-- [ ] harness artifacts path appears at `/artifacts/harness`.
-- [ ] container id is recorded in `RunnerTaskSession`.
-- [ ] container is removed after successful attempt by default.
-- [ ] failed attempt can preserve container if configured.
+- [x] image builds from root `Dockerfile`.
+- [x] image builds from `docker/` context.
+- [x] missing Docker environment fails before run.
+- [x] workspace fixture appears at `/workspace` inside container.
+- [x] harness artifacts path appears at `/artifacts/harness`.
+- [x] container id is recorded in `RunnerTaskSession`.
+- [x] container is removed after successful attempt by default.
+- [x] failed attempt can preserve container if configured.
 
 ## 6. runner execution loop
 
@@ -269,33 +268,33 @@ Design reference: [runner-api.md](./runner-api.md)
 
 Tasks:
 
-- [ ] Implement run id generation.
-- [ ] Implement attempt id generation.
-- [ ] Create `RunnerTaskSession`.
-- [ ] Call `harness.runStep({ session, step })` for each step.
-- [ ] Keep steps serial within an attempt.
-- [ ] Store `nextHarnessState` only when present.
-- [ ] Keep prior `harnessState` when omitted.
-- [ ] Call `harness.stop(...)` at attempt end when present.
-- [ ] Call `harness.shutdown(...)` at suite end when present.
-- [ ] Stop attempt on failed/timed-out harness step for v0.
-- [ ] Ensure cleanup runs in `finally`.
-- [ ] Support `attempts` per task.
-- [ ] Support global `concurrency`.
-- [ ] Ensure each concurrent attempt has isolated workspace/container/artifacts.
+- [x] Implement run id generation.
+- [x] Implement attempt id generation.
+- [x] Create `RunnerTaskSession`.
+- [x] Call `harness.runStep({ session, step })` for each step.
+- [x] Keep steps serial within an attempt.
+- [x] Store `nextHarnessState` only when present.
+- [x] Keep prior `harnessState` when omitted.
+- [x] Call `harness.stop(...)` at attempt end when present.
+- [x] Call `harness.shutdown(...)` at suite end when present.
+- [x] Stop attempt on failed/timed-out harness step for v0.
+- [x] Ensure cleanup runs in `finally`.
+- [x] Support `attempts` per task.
+- [x] Support global `concurrency`.
+- [x] Ensure each concurrent attempt has isolated workspace/container/artifacts.
 
 Tests:
 
-- [ ] one task with three steps calls harness three times in order.
-- [ ] each step receives same session object.
-- [ ] `nextHarnessState` from step 1 reaches step 2.
-- [ ] omitted `nextHarnessState` keeps previous state.
-- [ ] failed harness step stops remaining steps.
-- [ ] `harness.stop(...)` is called after completed attempt.
-- [ ] `harness.stop(...)` is called after failed attempt.
-- [ ] `harness.shutdown(...)` is called once after suite.
-- [ ] `attempts: 3` runs three isolated attempts.
-- [ ] `concurrency: 2` limits concurrent attempts to two.
+- [x] one task with three steps calls harness three times in order.
+- [x] each step receives same session object.
+- [x] `nextHarnessState` from step 1 reaches step 2.
+- [x] omitted `nextHarnessState` keeps previous state.
+- [x] failed harness step stops remaining steps.
+- [x] `harness.stop(...)` is called after completed attempt.
+- [x] `harness.stop(...)` is called after failed attempt.
+- [x] `harness.shutdown(...)` is called once after suite.
+- [x] `attempts: 3` runs three isolated attempts.
+- [x] `concurrency: 2` limits concurrent attempts to two.
 
 ## 7. checks
 
@@ -309,26 +308,30 @@ Design reference: [runner-api.md#checks](./runner-api.md#checks)
 
 Tasks:
 
-- [ ] Normalize string check paths to check definitions.
-- [ ] Run TypeScript test checks with the chosen test runner inside Docker.
-- [ ] Run explicit command checks inside Docker.
-- [ ] Resolve `cwd` relative to `/workspace`.
-- [ ] Merge check environment with task/container environment.
-- [ ] Enforce check timeout.
-- [ ] Capture stdout/stderr to artifacts.
-- [ ] Return structured `CheckResult`.
-- [ ] Handle skipped checks.
-- [ ] Decide whether failed harness step skips checks in v0.
+- [x] Normalize string check paths to check definitions.
+- [x] Run TypeScript validation checks from the host runner, outside the attempt container.
+- [x] Run explicit command checks inside Docker.
+- [x] Resolve container check `cwd` relative to `/workspace`.
+- [x] Resolve host check `cwd` relative to the attempt workspace.
+- [x] Expose `MULTIBENCH_WORKSPACE_DIR` to host checks.
+- [x] Merge check environment with task/container environment.
+- [x] Enforce check timeout.
+- [x] Capture stdout/stderr to artifacts.
+- [x] Return structured `CheckResult`.
+- [x] Handle skipped checks.
+- [x] Decide whether failed harness step skips checks in v0.
 
 Tests:
 
-- [ ] passing check returns `passed`.
-- [ ] failing check returns `failed`.
-- [ ] timed-out check returns `timed-out`.
-- [ ] stdout/stderr are written to artifact files.
-- [ ] check command runs inside container, not host.
-- [ ] relative `cwd` resolves under `/workspace`.
-- [ ] env values are visible inside check process.
+- [x] passing check returns `passed`.
+- [x] failing check returns `failed`.
+- [x] timed-out check returns `timed-out`.
+- [x] stdout/stderr are written to artifact files.
+- [x] explicit command checks run inside container, not host.
+- [x] TypeScript validation checks run on the host, not inside the container.
+- [x] relative `cwd` resolves under `/workspace`.
+- [x] host checks can inspect the host attempt workspace.
+- [x] env values are visible inside check process.
 
 ## 8. diffs and artifacts
 
@@ -343,30 +346,30 @@ Design reference: [runner-api.md#result-artifacts](./runner-api.md#result-artifa
 
 Tasks:
 
-- [ ] Create run directory `.multibench/results/<run-id>`.
-- [ ] Write `run.json`.
-- [ ] Write `suite-result.json`.
-- [ ] Write `events.jsonl`.
-- [ ] Write attempt directories.
-- [ ] Write exact step input to `steps/<step-id>/input.txt`.
-- [ ] Write `harness-output.json`.
-- [ ] Write check results and logs.
-- [ ] Write `score.json`.
-- [ ] Capture `diff.patch` after each step.
-- [ ] Capture final `workspace.patch`.
-- [ ] Include container metadata in attempt artifacts.
-- [ ] Include harness config metadata if present.
-- [ ] Make artifact writes atomic where practical.
+- [x] Create run directory `.multibench/results/<run-id>`.
+- [x] Write `run.json`.
+- [x] Write `suite-result.json`.
+- [x] Write `events.jsonl`.
+- [x] Write attempt directories.
+- [x] Write exact step input to `steps/<step-id>/input.txt`.
+- [x] Write `harness-output.json`.
+- [x] Write check results and logs.
+- [x] Write `score.json`.
+- [x] Capture `diff.patch` after each step.
+- [x] Capture final `workspace.patch`.
+- [x] Include container metadata in attempt artifacts.
+- [x] Include harness config metadata if present.
+- [x] Make artifact writes atomic where practical.
 
 Tests:
 
-- [ ] run directory layout matches docs.
-- [ ] every step has `input.txt`.
-- [ ] every step has `harness-output.json`.
-- [ ] every check has `result.json`, `stdout.log`, and `stderr.log`.
-- [ ] diffs are captured after workspace changes.
-- [ ] suite result JSON validates against core schema.
-- [ ] attempt result includes `containerId` and container workspace path.
+- [x] run directory layout matches docs.
+- [x] every step has `input.txt`.
+- [x] every step has `harness-output.json`.
+- [x] every check has `result.json`, `stdout.log`, and `stderr.log`.
+- [x] diffs are captured after workspace changes.
+- [x] suite result JSON validates against core schema.
+- [x] attempt result includes `containerId` and container workspace path.
 
 ## 9. scoring
 
@@ -381,25 +384,25 @@ Design reference: [runner-api.md#scoring](./runner-api.md#scoring)
 
 Tasks:
 
-- [ ] Implement default step scoring:
-  - [ ] all checks passed -> success
-  - [ ] some checks passed -> partial
-  - [ ] no checks passed -> failure
-  - [ ] harness failed -> failure
-- [ ] Implement default task scoring from step scores.
-- [ ] Implement normalized task score.
-- [ ] Add hooks for future custom scoring rules.
-- [ ] Add final checks into task score.
-- [ ] Include score parts in result artifacts.
+- [x] Implement default step scoring:
+  - [x] all checks passed -> success
+  - [x] some checks passed -> partial
+  - [x] no checks passed -> failure
+  - [x] harness failed -> failure
+- [x] Implement default task scoring from step scores.
+- [x] Implement normalized task score.
+- [x] Add hooks for future custom scoring rules.
+- [x] Add final checks into task score.
+- [x] Include score parts in result artifacts.
 
 Tests:
 
-- [ ] all checks passed gives full step score.
-- [ ] mixed checks gives partial step score.
-- [ ] all checks failed gives failure.
-- [ ] harness failure caps/fails step score.
-- [ ] task score aggregates step scores.
-- [ ] normalized score is between 0 and 1.
+- [x] all checks passed gives full step score.
+- [x] mixed checks gives partial step score.
+- [x] all checks failed gives failure.
+- [x] harness failure caps/fails step score.
+- [x] task score aggregates step scores.
+- [x] normalized score is between 0 and 1.
 
 ## 10. CLI
 
@@ -413,46 +416,46 @@ Design reference: [cli-api.md](./cli-api.md)
 
 Tasks:
 
-- [ ] Implement `multibench run`.
-- [ ] Parse positional task globs/paths.
-- [ ] Default task pattern to `tasks/**/*.task.ts`.
-- [ ] Parse `--harness <path-to-harness.ts>`.
-- [ ] Reject non-path harness specs for v0.
-- [ ] Parse dotted `--harness.<key> <value>` options.
-- [ ] Support nested dotted keys.
-- [ ] Support repeated dotted keys as arrays.
-- [ ] Parse booleans and numeric-looking values conservatively.
-- [ ] Load `.harness.ts` module.
-- [ ] Accept default export `Harness`.
-- [ ] Accept named export `harness`.
-- [ ] Call `harness.configure(options)` if present.
-- [ ] Parse `--runs`.
-- [ ] Parse `--concurrent`.
-- [ ] Parse `--results-dir`.
-- [ ] Parse `--run-id`.
-- [ ] Parse timeout flags.
-- [ ] Implement `--dry-run`.
-- [ ] Implement `--list`.
-- [ ] Implement `multibench list`.
-- [ ] Implement `multibench validate`.
-- [ ] Implement `multibench replay`.
-- [ ] Wire CLI to `runSuite(...)`.
+- [x] Implement `multibench run`.
+- [x] Parse positional task globs/paths.
+- [x] Default task pattern to `tasks/**/*.task.ts`.
+- [x] Parse `--harness <path-to-harness.ts>`.
+- [x] Reject non-path harness specs for v0.
+- [x] Parse dotted `--harness.<key> <value>` options.
+- [x] Support nested dotted keys.
+- [x] Support repeated dotted keys as arrays.
+- [x] Parse booleans and numeric-looking values conservatively.
+- [x] Load `.harness.ts` module.
+- [x] Accept default export `Harness`.
+- [x] Accept named export `harness`.
+- [x] Call `harness.configure(options)` if present.
+- [x] Parse `--runs`.
+- [x] Parse `--concurrent`.
+- [x] Parse `--results-dir`.
+- [x] Parse `--run-id`.
+- [x] Parse timeout flags.
+- [x] Implement `--dry-run`.
+- [x] Implement `--list`.
+- [x] Implement `multibench list`.
+- [x] Implement `multibench validate`.
+- [x] Implement `multibench replay`.
+- [x] Wire CLI to `runSuite(...)`.
 
 Tests:
 
-- [ ] `multibench run` uses default task glob.
-- [ ] task positional args map to `taskPatterns`.
-- [ ] `--runs 3` maps to `attempts: 3`.
-- [ ] `--concurrent 2` maps to `concurrency: 2`.
-- [ ] `--harness ./x.harness.ts` loads that file.
-- [ ] non-path harness spec fails.
-- [ ] `--harness.api_key key` parses into `{ api_key: "key" }`.
-- [ ] `--harness.model model-string` parses into `{ model: "model-string" }`.
-- [ ] nested harness option parses correctly.
-- [ ] repeated harness option becomes array.
-- [ ] `configure(...)` receives parsed harness options.
-- [ ] `--dry-run` does not invoke harness.
-- [ ] `--list` prints matched tasks.
+- [x] `multibench run` uses default task glob.
+- [x] task positional args map to `taskPatterns`.
+- [x] `--runs 3` maps to `attempts: 3`.
+- [x] `--concurrent 2` maps to `concurrency: 2`.
+- [x] `--harness ./x.harness.ts` loads that file.
+- [x] non-path harness spec fails.
+- [x] `--harness.api_key key` parses into `{ api_key: "key" }`.
+- [x] `--harness.model model-string` parses into `{ model: "model-string" }`.
+- [x] nested harness option parses correctly.
+- [x] repeated harness option becomes array.
+- [x] `configure(...)` receives parsed harness options.
+- [x] `--dry-run` does not invoke harness.
+- [x] `--list` prints matched tasks.
 
 ## 11. example/mock harnesses
 
@@ -465,27 +468,27 @@ packages/harness/src/mock*
 
 Tasks:
 
-- [ ] Add `harnesses/mock.harness.ts`.
-- [ ] Add mock harness package helper.
-- [ ] Add `harnesses/claude-code.harness.ts` sketch.
-- [ ] Implement Claude Code option validation:
-  - [ ] `api_key`
-  - [ ] `model`
-  - [ ] `permission_mode`
-  - [ ] `max_turns`
-- [ ] Implement Claude Code CLI command construction with `docker exec`.
-- [ ] Parse Claude stream-json output.
-- [ ] Store Claude session id in `nextHarnessState`.
-- [ ] Resume Claude session from `session.harnessState`.
-- [ ] Write harness-local raw output artifacts.
+- [x] Add `harnesses/mock/mock.harness.ts`.
+- [x] Add mock harness package helper.
+- [x] Add `harnesses/claude-code/claude-code.harness.ts` sketch.
+- [x] Implement Claude Code option validation:
+  - [x] `api_key`
+  - [x] `model`
+  - [x] `permission_mode`
+  - [x] `max_turns`
+- [x] Implement Claude Code CLI command construction with `docker exec`.
+- [x] Parse Claude stream-json output.
+- [x] Store Claude session id in `nextHarnessState`.
+- [x] Resume Claude session from `session.harnessState`.
+- [x] Write harness-local raw output artifacts.
 
 Tests:
 
-- [ ] mock harness works with runner integration tests.
-- [ ] Claude command construction uses `session.containerId`.
-- [ ] Claude command construction uses `session.containerWorkspaceDir`.
-- [ ] Claude step 2 uses prior `claudeSessionId`.
-- [ ] raw output artifacts are written under `session.artifactsDir`.
+- [x] mock harness works with runner integration tests.
+- [x] Claude command construction uses `session.containerId`.
+- [x] Claude command construction uses `session.containerWorkspaceDir`.
+- [x] Claude step 2 uses prior `claudeSessionId`.
+- [x] raw output artifacts are written under `session.artifactsDir`.
 
 ## 12. first real task: memcached command rollback
 
@@ -499,31 +502,33 @@ Design reference: [README.md](../README.md)
 
 Tasks:
 
-- [ ] Create task directory.
-- [ ] Add `memcached-command-rollback.task.ts`.
-- [ ] Add Dockerfile.
-- [ ] Add workspace source for memcached repo/ref.
-- [ ] Add step 1: add `TOUCH2`.
-- [ ] Add step 1 checks.
-- [ ] Add step 2: add `CASMETA`.
-- [ ] Add step 2 checks.
-- [ ] Add step 3: remove only `CASMETA`, keep `TOUCH2`.
-- [ ] Add final checks.
-- [ ] Add protocol docs expectations.
-- [ ] Add scoring parts if needed.
-- [ ] Validate task with CLI.
-- [ ] Run task with mock harness.
+- [x] Create task directory.
+- [x] Add `memcached-command-rollback.task.ts`.
+- [x] Add Dockerfile.
+- [x] Add workspace source for memcached repo/ref.
+- [x] Add step 1: add `TOUCH2`.
+- [x] Add step 1 checks.
+- [x] Add step 2: add `CASMETA`.
+- [x] Add step 2 checks.
+- [x] Add step 3: remove only `CASMETA`, keep `TOUCH2`.
+- [x] Add final checks.
+- [x] Add protocol docs expectations.
+- [x] Keep validation checks outside the agent-visible workspace.
+- [x] Use task-owned TypeScript validation commands.
+- [x] Add scoring parts if needed.
+- [x] Validate task with CLI.
+- [x] Run task with mock harness.
 
 Tests:
 
-- [ ] Docker image builds.
-- [ ] memcached source appears in `/workspace`.
-- [ ] step 1 check fails on baseline.
-- [ ] step 1 check passes with known-good solution.
-- [ ] step 2 check fails without `CASMETA`.
-- [ ] final check fails if `TOUCH2` removed.
-- [ ] final check fails if `CASMETA` remains.
-- [ ] final check passes with known-good final solution.
+- [x] Docker image builds.
+- [x] memcached source appears in `/workspace`.
+- [x] step 1 check fails on baseline.
+- [x] step 1 check passes with known-good solution.
+- [x] step 2 check fails without `CASMETA`.
+- [x] final check fails if `TOUCH2` removed.
+- [x] final check fails if `CASMETA` remains.
+- [x] final check passes with known-good final solution.
 
 ## 13. integration and end-to-end tests
 
@@ -537,22 +542,23 @@ harnesses/
 
 Tasks:
 
-- [ ] Create tiny Dockerized fixture task for runner tests.
-- [ ] Create `.task.ts` fixture with two steps.
-- [ ] Create `.harness.ts` fixture that edits files deterministically.
-- [ ] Run full CLI against fixture task.
-- [ ] Verify result artifacts.
-- [ ] Verify checks execute inside Docker.
-- [ ] Verify concurrency with multiple fixture tasks.
-- [ ] Verify replay reads artifacts without invoking harness.
+- [x] Create tiny Dockerized fixture task for runner tests.
+- [x] Create `.task.ts` fixture with two steps.
+- [x] Create `.harness.ts` fixture that edits files deterministically.
+- [x] Run full CLI against fixture task.
+- [x] Verify result artifacts.
+- [x] Verify checks execute inside Docker.
+- [x] Verify host TypeScript checks execute outside Docker.
+- [x] Verify concurrency with multiple fixture tasks.
+- [x] Verify replay reads artifacts without invoking harness.
 
 Tests:
 
-- [ ] full `multibench run` exits 0 on passing fixture.
-- [ ] full `multibench run` exits nonzero on failing fixture.
-- [ ] `multibench validate` catches invalid task.
-- [ ] `multibench list` prints expected task metadata.
-- [ ] `multibench replay` prints transcript/checks/scores.
+- [x] full `multibench run` exits 0 on passing fixture.
+- [x] full `multibench run` exits nonzero on failing fixture.
+- [x] `multibench validate` catches invalid task.
+- [x] `multibench list` prints expected task metadata.
+- [x] `multibench replay` prints transcript/checks/scores.
 
 ## 14. docs cleanup
 
@@ -565,36 +571,32 @@ docs/
 
 Tasks:
 
-- [ ] Update README with final package layout.
-- [ ] Update README task dictionary as tasks mature.
-- [ ] Add quickstart.
-- [ ] Add task authoring guide.
-- [ ] Add harness authoring guide.
-- [ ] Add Docker task requirements.
-- [ ] Add scoring guide.
-- [ ] Add CLI reference.
-- [ ] Keep docs consistent with final public API names.
+- [x] Update README with final package layout.
+- [x] Update README task dictionary as tasks mature.
+- [x] Add quickstart.
+- [x] Add task authoring guide.
+- [x] Add harness authoring guide.
+- [x] Add Docker task requirements.
+- [x] Add scoring guide.
+- [x] Add CLI reference.
+- [x] Keep docs consistent with final public API names.
 
 Tests:
 
-- [ ] Documentation examples typecheck where practical.
-- [ ] CLI examples are covered by smoke tests where practical.
+- [x] Documentation examples typecheck where practical.
+- [x] CLI examples are covered by smoke tests where practical.
 
 ## 15. API naming cleanup before implementation lock
 
-Open decisions to resolve before broad implementation:
+Resolved decisions:
 
-- [ ] Rename public `loadTask` / `runTask` APIs?
-  - [ ] option: `loadTaskFile(...)`
-  - [ ] option: `runTaskFile(...)`
-  - [ ] option: `runLoadedTask(...)`
-  - [ ] keep `runSuite(...)` as the primary CLI-facing API
-- [ ] Decide whether CLI `--runs` should remain distinct from runner `attempts`.
-- [ ] Decide whether task workspaces live under `.multibench/workspaces` or under each run directory.
-- [ ] Decide default Docker cleanup policy.
-- [ ] Decide whether failed checks stop the attempt or only affect score.
-- [ ] Decide whether failed harness step skips checks in v0.
-- [ ] Decide whether task checks are always test files or can be arbitrary commands in v0.
+- [x] Keep public `loadTask(...)`, `runTask(...)`, and `runSuite(...)`.
+- [x] Keep CLI `--runs` mapped to runner `attempts`.
+- [x] Keep task workspaces under `.multibench/workspaces`.
+- [x] Remove Docker containers by default after attempts.
+- [x] Failed checks affect score and suite status; they do not stop the attempt.
+- [x] Failed harness steps skip checks in v0.
+- [x] Task checks can be arbitrary commands; string paths normalize to TypeScript test commands.
 
 ## suggested implementation order
 

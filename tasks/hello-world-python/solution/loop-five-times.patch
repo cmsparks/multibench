@@ -1,0 +1,8 @@
+diff --git a/hello.py b/hello.py
+index 58cf869..848ad8a 100644
+--- a/hello.py
++++ b/hello.py
+@@ -1 +1,2 @@
+-print("Hello world!")
++for _ in range(5):
++    print("Hello world!")

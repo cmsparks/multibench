@@ -64,8 +64,8 @@ describe("harness package", () => {
     const harness: Harness = {
       name: "real-harness",
       version: "1.0.0",
-      async runStep() {
-        return completedOutput();
+      runStep() {
+        return Promise.resolve(completedOutput());
       },
     };
 
@@ -219,7 +219,12 @@ describe("harness package", () => {
 
       const content = await readFile(file, "utf8");
       expect(content.endsWith("\n")).toBe(true);
-      expect(content.trimEnd().split("\n").map((line) => JSON.parse(line))).toEqual(events);
+      expect(
+        content
+          .trimEnd()
+          .split("\n")
+          .map((line): unknown => JSON.parse(line)),
+      ).toEqual(events);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

@@ -18,6 +18,8 @@ minimumReleaseAge: 10080
 pnpm install
 pnpm build
 pnpm typecheck
+pnpm lint
+pnpm format:check
 pnpm test
 ```
 

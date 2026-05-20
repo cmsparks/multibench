@@ -48,7 +48,11 @@ afterEach(async () => {
 describe("discoverTasks", () => {
   it("with no path discovers tasks/**/*.task.ts", async () => {
     const cwd = await createWorkspace();
-    const taskFile = await writeWorkspaceFile(cwd, "tasks/basic/basic.task.ts", validTaskFile("basic"));
+    const taskFile = await writeWorkspaceFile(
+      cwd,
+      "tasks/basic/basic.task.ts",
+      validTaskFile("basic"),
+    );
     await writeWorkspaceFile(cwd, "not-tasks/ignored.task.ts", validTaskFile("ignored"));
 
     await expect(discoverTasks({ cwd })).resolves.toEqual([
@@ -79,7 +83,11 @@ describe("discoverTasks", () => {
   it("directory path discovers nested task files", async () => {
     const cwd = await createWorkspace();
     const firstTask = await writeWorkspaceFile(cwd, "suite/one.task.ts", validTaskFile("one"));
-    const secondTask = await writeWorkspaceFile(cwd, "suite/nested/two.task.ts", validTaskFile("two"));
+    const secondTask = await writeWorkspaceFile(
+      cwd,
+      "suite/nested/two.task.ts",
+      validTaskFile("two"),
+    );
     await writeWorkspaceFile(cwd, "outside/three.task.ts", validTaskFile("three"));
 
     await expect(discoverTasks({ cwd, patterns: ["suite"] })).resolves.toEqual([
@@ -115,7 +123,11 @@ describe("discoverTasks", () => {
   it("ignored directories are ignored", async () => {
     const cwd = await createWorkspace();
     const realTask = await writeWorkspaceFile(cwd, "tasks/real.task.ts", validTaskFile("real"));
-    await writeWorkspaceFile(cwd, "tasks/node_modules/package/ignored.task.ts", validTaskFile("node"));
+    await writeWorkspaceFile(
+      cwd,
+      "tasks/node_modules/package/ignored.task.ts",
+      validTaskFile("node"),
+    );
     await writeWorkspaceFile(cwd, "tasks/dist/ignored.task.ts", validTaskFile("dist"));
     await writeWorkspaceFile(cwd, "tasks/.multibench/ignored.task.ts", validTaskFile("state"));
 
@@ -157,7 +169,9 @@ describe("loadTask", () => {
       `,
     );
 
-    await expect(loadTask(taskFile, { cwd })).rejects.toThrow(/invalid|normalized task definition|title/i);
+    await expect(loadTask(taskFile, { cwd })).rejects.toThrow(
+      /invalid|normalized task definition|title/i,
+    );
   });
 
   it("valid task file normalizes successfully", async () => {

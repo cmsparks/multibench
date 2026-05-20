@@ -1,0 +1,4 @@
+Text protocol command reference placeholder.
+
+The starting fixture intentionally omits the new commands so benchmark checks
+fail until an agent implements them.

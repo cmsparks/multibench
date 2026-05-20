@@ -1,11 +1,22 @@
 import type { NormalizedTaskDefinition } from "@multibench/core";
 import { parseNormalizedTaskDefinition } from "@multibench/core";
 import type { Dirent } from "node:fs";
-import { readdir, stat } from "node:fs/promises";
-import { dirname, resolve, relative, sep } from "node:path";
+import { readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { stripTypeScriptTypes } from "node:module";
+import { basename, dirname, resolve, relative, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 
 export const runnerPackageName = "@multibench/runner";
+
+export type {
+  RunnerReporter,
+  RunnerRunContext,
+  RunnerTimeouts,
+  RunTaskOptions,
+} from "./runTask.js";
+export { runTask } from "./runTask.js";
+export type { RunSuiteOptions } from "./runSuite.js";
+export { runSuite } from "./runSuite.js";
 
 export type DiscoverTasksOptions = {
   cwd: string;
@@ -31,10 +42,20 @@ export type LoadedTask = {
 const defaultPatterns = ["tasks/**/*.task.ts"];
 const defaultIgnore = ["**/node_modules/**", "**/dist/**", "**/.multibench/**"];
 const ignoredDirectoryNames = new Set(["node_modules", "dist", ".multibench"]);
+const moduleExtension = import.meta.url.endsWith(".ts") ? "ts" : "js";
+const packageOutputDirectory = moduleExtension === "ts" ? "src" : "dist";
+const workspacePackageUrls = new Map([
+  [
+    "@multibench/core",
+    new URL(`../../core/${packageOutputDirectory}/index.${moduleExtension}`, import.meta.url).href,
+  ],
+  ["@multibench/tasks", new URL(`./task-loader-api.${moduleExtension}`, import.meta.url).href],
+]);
 
 export async function discoverTasks(options: DiscoverTasksOptions): Promise<DiscoveredTask[]> {
   const cwd = resolve(options.cwd);
-  const patterns = options.patterns && options.patterns.length > 0 ? options.patterns : defaultPatterns;
+  const patterns =
+    options.patterns && options.patterns.length > 0 ? options.patterns : defaultPatterns;
   const ignore = [...defaultIgnore, ...(options.ignore ?? [])];
   const files = new Set<string>();
 
@@ -45,7 +66,7 @@ export async function discoverTasks(options: DiscoverTasksOptions): Promise<Disc
   }
 
   return [...files]
-    .sort((left, right) => left.localeCompare(right))
+    .sort((left, right) => compareTaskPaths(cwd, left, right))
     .map((file) => ({
       file,
       taskDir: dirname(file),
@@ -55,10 +76,14 @@ export async function discoverTasks(options: DiscoverTasksOptions): Promise<Disc
 export async function loadTask(file: string, options?: LoadTaskOptions): Promise<LoadedTask> {
   const cwd = resolve(options?.cwd ?? process.cwd());
   const absoluteFile = resolve(cwd, file);
-  const moduleUrl = pathToFileURL(absoluteFile);
-  moduleUrl.searchParams.set("mtime", Date.now().toString());
+  const loadableModule = await createLoadableTaskModule(absoluteFile);
 
-  const importedTask = (await import(moduleUrl.href)) as { default?: unknown };
+  let importedTask: { default?: unknown };
+  try {
+    importedTask = (await import(loadableModule.url.href)) as { default?: unknown };
+  } finally {
+    await rm(loadableModule.file, { force: true });
+  }
 
   if (!("default" in importedTask)) {
     throw new Error(`Task file ${absoluteFile} must have a default export`);
@@ -69,9 +94,12 @@ export async function loadTask(file: string, options?: LoadTaskOptions): Promise
     definition = parseNormalizedTaskDefinition(importedTask.default);
   } catch (error) {
     if (error instanceof Error) {
-      throw new Error(`Failed to load invalid task definition from ${absoluteFile}: ${error.message}`, {
-        cause: error,
-      });
+      throw new Error(
+        `Failed to load invalid task definition from ${absoluteFile}: ${error.message}`,
+        {
+          cause: error,
+        },
+      );
     }
 
     throw error;
@@ -82,6 +110,39 @@ export async function loadTask(file: string, options?: LoadTaskOptions): Promise
     taskDir: dirname(absoluteFile),
     definition,
   };
+}
+
+async function createLoadableTaskModule(file: string): Promise<{ file: string; url: URL }> {
+  const source = await readFile(file, "utf8");
+  const rewrittenSource = rewriteWorkspacePackageImports(source);
+  const javaScriptSource = stripTypeScriptTypes(rewrittenSource, {
+    mode: "strip",
+    sourceUrl: pathToFileURL(file).href,
+  });
+  const loadableFile = resolve(
+    dirname(file),
+    `.multibench-loader-${process.pid}-${Date.now()}-${basename(file, ".ts")}.mjs`,
+  );
+
+  await writeFile(loadableFile, javaScriptSource, "utf8");
+  return {
+    file: loadableFile,
+    url: pathToFileURL(loadableFile),
+  };
+}
+
+function rewriteWorkspacePackageImports(source: string): string {
+  let rewrittenSource = source;
+
+  for (const [specifier, url] of workspacePackageUrls) {
+    rewrittenSource = rewrittenSource
+      .replaceAll(`from "${specifier}"`, `from "${url}"`)
+      .replaceAll(`from '${specifier}'`, `from '${url}'`)
+      .replaceAll(`import("${specifier}")`, `import("${url}")`)
+      .replaceAll(`import('${specifier}')`, `import('${url}')`);
+  }
+
+  return rewrittenSource;
 }
 
 async function discoverPattern(cwd: string, pattern: string, ignore: string[]): Promise<string[]> {
@@ -98,7 +159,11 @@ async function discoverPattern(cwd: string, pattern: string, ignore: string[]): 
       return walkTaskFiles(absolutePath, ignore, cwd);
     }
 
-    if (pathStat.isFile() && absolutePath.endsWith(".task.ts") && !isIgnored(absolutePath, ignore, cwd)) {
+    if (
+      pathStat.isFile() &&
+      absolutePath.endsWith(".task.ts") &&
+      !isIgnored(absolutePath, ignore, cwd)
+    ) {
       return [absolutePath];
     }
 
@@ -139,7 +204,11 @@ async function walkTaskFiles(directory: string, ignore: string[], cwd: string): 
       continue;
     }
 
-    if (entry.isFile() && entry.name.endsWith(".task.ts") && !isIgnored(absolutePath, ignore, cwd)) {
+    if (
+      entry.isFile() &&
+      entry.name.endsWith(".task.ts") &&
+      !isIgnored(absolutePath, ignore, cwd)
+    ) {
       files.push(absolutePath);
     }
   }
@@ -218,6 +287,19 @@ function globToRegExp(pattern: string): RegExp {
   return new RegExp(expression);
 }
 
+function compareTaskPaths(cwd: string, left: string, right: string): number {
+  const leftRelative = toPosixPath(relative(cwd, left));
+  const rightRelative = toPosixPath(relative(cwd, right));
+  const leftDepth = leftRelative.split("/").length;
+  const rightDepth = rightRelative.split("/").length;
+
+  if (leftDepth !== rightDepth) {
+    return leftDepth - rightDepth;
+  }
+
+  return leftRelative < rightRelative ? -1 : leftRelative > rightRelative ? 1 : 0;
+}
+
 function escapeRegExp(value: string): string {
   return value.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&");
 }
@@ -229,3 +311,6 @@ function toPosixPath(path: string): string {
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {
   return error instanceof Error && "code" in error;
 }
+
+export * from "./docker.js";
+export * from "./workspace.js";

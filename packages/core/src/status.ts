@@ -1,9 +1,4 @@
-export const harnessStepStatuses = [
-  "completed",
-  "failed",
-  "timed-out",
-  "cancelled",
-] as const;
+export const harnessStepStatuses = ["completed", "failed", "timed-out", "cancelled"] as const;
 
 export type HarnessStepStatus = (typeof harnessStepStatuses)[number];
 

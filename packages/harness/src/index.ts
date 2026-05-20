@@ -6,11 +6,7 @@ import type {
   HarnessStepOutput,
   HarnessStopInput,
 } from "@multibench/core";
-import {
-  HarnessEventSchema,
-  HarnessStepOutputSchema,
-  parseSchema,
-} from "@multibench/core";
+import { HarnessEventSchema, HarnessStepOutputSchema, parseSchema } from "@multibench/core";
 
 export const harnessPackageName = "@multibench/harness";
 
@@ -28,6 +24,12 @@ export type Harness = {
   version?: string;
   config?: unknown;
   configure?: (options: unknown) => void | Promise<void>;
+  dockerImageLayer?: (input: { baseImage: string }) => {
+    dockerfile: string;
+    context: string;
+    tagPrefix?: string;
+    buildArgs?: Record<string, string>;
+  };
   runStep: (input: HarnessRunStepInput) => Promise<HarnessStepOutput>;
   stop?: (input: HarnessStopInput) => Promise<void>;
   shutdown?: () => Promise<void>;
@@ -55,6 +57,13 @@ export function validateHarness(harness: unknown): asserts harness is Harness {
 
   if (candidate.configure !== undefined && typeof candidate.configure !== "function") {
     throw new TypeError("Invalid harness: configure must be a function when provided");
+  }
+
+  if (
+    candidate.dockerImageLayer !== undefined &&
+    typeof candidate.dockerImageLayer !== "function"
+  ) {
+    throw new TypeError("Invalid harness: dockerImageLayer must be a function when provided");
   }
 
   if (typeof candidate.runStep !== "function") {
@@ -104,8 +113,7 @@ export function createMockHarness(options: MockHarnessOptions): Harness {
         throw new Error(`Mock harness has no scripted output for step ${input.step.id}`);
       }
 
-      const output =
-        typeof scriptedStep === "function" ? await scriptedStep(input) : scriptedStep;
+      const output = typeof scriptedStep === "function" ? await scriptedStep(input) : scriptedStep;
 
       return parseSchema(HarnessStepOutputSchema, output, "harness step output");
     },
@@ -114,10 +122,7 @@ export function createMockHarness(options: MockHarnessOptions): Harness {
   return harness;
 }
 
-export async function writeHarnessEventsJsonl(
-  path: string,
-  events: HarnessEvent[],
-): Promise<void> {
+export async function writeHarnessEventsJsonl(path: string, events: HarnessEvent[]): Promise<void> {
   const validatedEvents = events.map((event) =>
     parseSchema(HarnessEventSchema, event, "harness event"),
   );

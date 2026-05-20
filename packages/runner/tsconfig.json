@@ -6,9 +6,5 @@
     "rootDir": "src"
   },
   "include": ["src/**/*.ts"],
-  "references": [
-    { "path": "../core" },
-    { "path": "../harness" },
-    { "path": "../tasks" }
-  ]
+  "references": [{ "path": "../core" }, { "path": "../harness" }, { "path": "../tasks" }]
 }

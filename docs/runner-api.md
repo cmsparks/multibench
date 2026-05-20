@@ -8,18 +8,18 @@ The CLI should be a thin wrapper around this package.
 
 The runner owns:
 
-* discovering and loading `*.task.ts` files
-* validating normalized task definitions
-* creating run ids and attempt ids
-* creating the run results directory
-* preparing isolated Docker containers and workspaces for task attempts
-* creating one runner-owned task-attempt session per attempt
-* sending each task step to the harness in order with that session context
-* running configured checks after each step
-* capturing workspace diffs after each step
-* scoring step results and final task results
-* writing run, task, step, check, diff, and harness artifacts
-* aggregating task results into a suite result
+- discovering and loading `*.task.ts` files
+- validating normalized task definitions
+- creating run ids and attempt ids
+- creating the run results directory
+- preparing isolated Docker containers and workspaces for task attempts
+- creating one runner-owned task-attempt session per attempt
+- sending each task step to the harness in order with that session context
+- running configured checks after each step
+- capturing workspace diffs after each step
+- scoring step results and final task results
+- writing run, task, step, check, diff, and harness artifacts
+- aggregating task results into a suite result
 
 The runner should not implement concrete harness behavior. It only calls the `@multibench/harness` interface.
 
@@ -28,22 +28,13 @@ The runner should not implement concrete harness behavior. It only calls the `@m
 The package should expose a small programmatic API:
 
 ```ts
-export async function discoverTasks(
-  options: DiscoverTasksOptions,
-): Promise<DiscoveredTask[]>;
+export async function discoverTasks(options: DiscoverTasksOptions): Promise<DiscoveredTask[]>;
 
-export async function loadTask(
-  file: string,
-  options?: LoadTaskOptions,
-): Promise<LoadedTask>;
+export async function loadTask(file: string, options?: LoadTaskOptions): Promise<LoadedTask>;
 
-export async function runTask(
-  options: RunTaskOptions,
-): Promise<TaskRunResult>;
+export async function runTask(options: RunTaskOptions): Promise<TaskRunResult>;
 
-export async function runSuite(
-  options: RunSuiteOptions,
-): Promise<SuiteRunResult>;
+export async function runSuite(options: RunSuiteOptions): Promise<SuiteRunResult>;
 ```
 
 The CLI should primarily call `runSuite(...)`.
@@ -253,15 +244,15 @@ For each task attempt, the runner should:
 5. Mount or copy the workspace and harness artifact directory into the container.
 6. Create a runner-owned task-attempt session object.
 7. For each step:
-   * write the exact input instruction to artifacts
-   * call `harness.runStep(...)` with the session and step instruction
-   * collect harness output
-   * store `output.nextHarnessState` on the session if provided
-   * capture workspace diff
-   * run step checks inside the container
-   * score the step
-   * write step artifacts
-8. Run final checks inside the container if the task defines them separately.
+   - write the exact input instruction to artifacts
+   - call `harness.runStep(...)` with the session and step instruction
+   - collect harness output
+   - store `output.nextHarnessState` on the session if provided
+   - capture workspace diff
+   - run step checks from the runner
+   - score the step
+   - write step artifacts
+8. Run final checks from the runner if the task defines them separately.
 9. Score the task.
 10. Call `harness.stop(...)` for the session if provided.
 11. Stop and remove the attempt container according to cleanup policy.
@@ -291,10 +282,10 @@ runSuite(...)
       if output.nextHarnessState is present, update session.harnessState
       write harness output artifact
       capture workspace diff
-      run step checks inside container
+      run step checks from the runner
       score step
 
-    run final checks inside container
+    run final checks from the runner
     score task attempt
     harness.stop?.({ session, reason: "completed" })
     stop/remove attempt container
@@ -360,10 +351,10 @@ Open question: workspace directories may eventually live under the run directory
 
 For step attachments, the recommended default is:
 
-* resolve attachment paths relative to the task directory
-* copy attachments into a stable `evidence/` directory inside the workspace
-* pass the workspace-relative attachment path to `harness.runStep(...)`
-* let harnesses add path references to the native agent prompt if the agent lacks attachment support
+- resolve attachment paths relative to the task directory
+- copy attachments into a stable `evidence/` directory inside the workspace
+- pass the workspace-relative attachment path to `harness.runStep(...)`
+- let harnesses add path references to the native agent prompt if the agent lacks attachment support
 
 This keeps attachment handling deterministic and avoids each harness inventing its own file layout.
 
@@ -378,26 +369,37 @@ export type CheckDefinition = {
   cwd?: string;
   timeoutMs?: number;
   env?: Record<string, string>;
+  metadata?: Record<string, unknown>;
 };
 ```
 
-Check commands run inside the attempt container. `cwd` is relative to `containerWorkspaceDir` unless it is an absolute container path.
+Explicit command checks run inside the attempt container by default. `cwd` is relative to
+`containerWorkspaceDir` unless it is an absolute container path.
+
+TypeScript validation checks should normally run on the host, outside the agent-visible container,
+by using `command: ["tsx", "/absolute/task/check.ts"]` and `metadata: { runner: "host" }`. Host
+checks receive `MULTIBENCH_WORKSPACE_DIR`, `MULTIBENCH_CONTAINER_WORKSPACE_DIR`, and
+`MULTIBENCH_CONTAINER_ID` in their environment.
 
 A step may reference one or more checks:
 
 ```ts
-step({ id: "add-touch2", checks: ["tests/touch2.test.ts"] })`
+step({
+  id: "add-touch2",
+  checks: [{ id: "touch2", command: ["tsx", checkPath("touch2.ts")], metadata: { runner: "host" } }],
+})`
   Add a TOUCH2 command...
-`
+`;
 ```
 
-For TypeScript test checks, the runner can normalize paths into a command such as:
+For host TypeScript checks, the runner executes the check file directly with Node:
 
 ```sh
-docker exec <container-id> sh -lc 'cd /workspace && vitest run tests/touch2.test.ts'
+MULTIBENCH_WORKSPACE_DIR=/path/to/attempt/workspace node /path/to/task/checks/touch2.ts
 ```
 
-For non-TypeScript tasks, checks can be explicit commands:
+For checks that intentionally need the attempt container, use explicit commands without host runner
+metadata:
 
 ```ts
 check({
@@ -445,9 +447,9 @@ export type TaskScore = {
 
 For v0, a simple default is acceptable:
 
-* all checks passed: step success
-* some checks passed: step partial
-* no checks passed or harness failed: step failure
+- all checks passed: step success
+- some checks passed: step partial
+- no checks passed or harness failed: step failure
 
 Tasks can later define richer scoring rules in code.
 
@@ -456,7 +458,7 @@ Checks are runner-owned and run after `harness.runStep(...)` returns:
 ```text
 harness.runStep(add-touch2)
 capture diff
-run tests/touch2.test.ts
+run task/checks/touch2.ts against MULTIBENCH_WORKSPACE_DIR
 score add-touch2
 ```
 
@@ -599,9 +601,9 @@ Task attempts can run concurrently, but a single task attempt must run steps ser
 
 Concurrency rules:
 
-* steps within one attempt: serial
-* attempts for the same task: may be parallel if workspaces are isolated
-* different tasks: may be parallel if the harness and machine support it
+- steps within one attempt: serial
+- attempts for the same task: may be parallel if workspaces are isolated
+- different tasks: may be parallel if the harness and machine support it
 
 The default should be `concurrency: 1`.
 
@@ -611,16 +613,16 @@ Replay should use existing artifacts rather than invoking the harness again.
 
 Initial replay support can:
 
-* read `run.json` and `suite-result.json`
-* print the step transcript
-* show checks and scores
-* locate diffs and harness raw output
+- read `run.json` and `suite-result.json`
+- print the step transcript
+- show checks and scores
+- locate diffs and harness raw output
 
 Later replay support may reconstruct a task attempt workspace at a given step.
 
 ## open questions
 
-* Should checks run after every step by default, or only when the step declares checks?
-* Should the runner support continuing after a failed step, or should any failed step stop the attempt in v0?
-* Should workspace snapshots be full copies, git commits, or patches after each step?
-* Should scoring live entirely in `@multibench/core`, or should `@multibench/runner` own the default score derivation from checks?
+- Should checks run after every step by default, or only when the step declares checks?
+- Should the runner support continuing after a failed step, or should any failed step stop the attempt in v0?
+- Should workspace snapshots be full copies, git commits, or patches after each step?
+- Should scoring live entirely in `@multibench/core`, or should `@multibench/runner` own the default score derivation from checks?

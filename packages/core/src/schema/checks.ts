@@ -4,9 +4,7 @@ import { metadataSchema, nonEmptyStringSchema, stringRecordSchema } from "./comm
 
 export const CheckDefinitionSchema = z.object({
   id: nonEmptyStringSchema,
-  command: z
-    .array(nonEmptyStringSchema)
-    .min(1, "Check command must contain at least one argument"),
+  command: z.array(nonEmptyStringSchema).min(1, "Check command must contain at least one argument"),
   cwd: nonEmptyStringSchema.optional(),
   timeoutMs: z.number().int().positive().optional(),
   env: stringRecordSchema.optional(),
@@ -16,9 +14,7 @@ export const CheckDefinitionSchema = z.object({
 export const CheckResultSchema = z.object({
   id: nonEmptyStringSchema,
   status: z.enum(checkStatuses),
-  command: z
-    .array(nonEmptyStringSchema)
-    .min(1, "Check command must contain at least one argument"),
+  command: z.array(nonEmptyStringSchema).min(1, "Check command must contain at least one argument"),
   cwd: nonEmptyStringSchema,
   exitCode: z.number().int().optional(),
   stdoutPath: nonEmptyStringSchema,

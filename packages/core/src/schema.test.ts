@@ -86,6 +86,7 @@ function validSuiteResult(overrides: Partial<SuiteRunResult> = {}): SuiteRunResu
                 durationMs: 3000,
               },
             ],
+            finalChecks: [],
             score: {
               status: "success",
               score: 1,
@@ -140,10 +141,7 @@ describe("core schemas", () => {
 
   it("fails with a useful error for duplicate step ids", () => {
     const task = validTask({
-      instructions: [
-        validTask().instructions[0]!,
-        { ...validTask().instructions[0]!, index: 1 },
-      ],
+      instructions: [validTask().instructions[0]!, { ...validTask().instructions[0]!, index: 1 }],
     });
 
     expect(() => parseNormalizedTaskDefinition(task)).toThrow(/duplicate step id "first-step"/i);
@@ -157,9 +155,9 @@ describe("core schemas", () => {
   });
 
   it("fails validation when Docker environment has no build or image source", () => {
-    expect(() =>
-      parseNormalizedTaskDefinition(validTask({ environment: {} })),
-    ).toThrow(/docker environment/i);
+    expect(() => parseNormalizedTaskDefinition(validTask({ environment: {} }))).toThrow(
+      /docker environment/i,
+    );
   });
 
   it("fails validation for an invalid check command", () => {

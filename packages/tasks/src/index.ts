@@ -21,10 +21,7 @@ export type StepOptions = {
   metadata?: Record<string, unknown>;
 };
 
-export type TaskAuthoringDefinition = Omit<
-  TaskDefinition,
-  "environment" | "instructions"
-> & {
+export type TaskAuthoringDefinition = Omit<TaskDefinition, "environment" | "instructions"> & {
   environment?: DockerEnvironment;
   instructions: TaskStepDefinition[];
 };
@@ -130,9 +127,7 @@ function normalizeInstructionText(value: string): string {
     .map((line) => (line.trim() === "" ? blankLineSentinel : line))
     .join("\n");
 
-  return deindent(protectedValue)
-    .replaceAll(blankLineSentinel, "")
-    .trim();
+  return deindent(protectedValue).replaceAll(blankLineSentinel, "").trim();
 }
 
 function stripUndefinedProperties<T extends Record<string, unknown>>(value: T): T {

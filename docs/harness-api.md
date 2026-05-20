@@ -8,11 +8,11 @@ The runner owns benchmark orchestration, task-attempt sessions, workspaces, arti
 
 The harness API should support:
 
-* executing one scripted user message against a runner-owned task-attempt session
-* preserving native agent context across steps using opaque harness state
-* collecting stdout/stderr, structured events, usage, and final status
-* stopping native agent work for a runner-owned session when asked
-* implementing deterministic mock harnesses for tests
+- executing one scripted user message against a runner-owned task-attempt session
+- preserving native agent context across steps using opaque harness state
+- collecting stdout/stderr, structured events, usage, and final status
+- stopping native agent work for a runner-owned session when asked
+- implementing deterministic mock harnesses for tests
 
 The API should not require every harness to expose the same process model. Some harnesses may run one persistent process. Others, such as Claude Code in non-interactive mode, may run one process per step and resume by native session id.
 
@@ -116,11 +116,11 @@ Harnesses should execute agent work inside the attempt container. A CLI harness 
 
 Native state can represent:
 
-* native session id
-* `--resume` token
-* persistent process handle id
-* SDK continuation value
-* mock transcript state
+- native session id
+- `--resume` token
+- persistent process handle id
+- SDK continuation value
+- mock transcript state
 
 For Claude Code, the first step creates or discovers the native Claude session id. Later steps resume that session. This is how multibench evaluates long-context steering rather than isolated one-shot tasks.
 
@@ -416,16 +416,16 @@ const harness = mockHarness({
 
 The runner tests should use the mock harness to verify:
 
-* task discovery
-* runner-owned session lifecycle
-* ordered step execution
-* harness state carryover between steps
-* artifact writing
-* timeout and failure handling
-* scoring after each step
+- task discovery
+- runner-owned session lifecycle
+- ordered step execution
+- harness state carryover between steps
+- artifact writing
+- timeout and failure handling
+- scoring after each step
 
 ## open questions
 
-* Should harnesses support an explicit long-running interrupt API, or is step-level timeout/cancellation enough for v0?
-* Should attachments be copied into the workspace by the runner before `runStep(...)`, or should each harness decide how to expose them?
-* Should the runner require all harnesses to emit file-change events, or should file diffs be captured independently by the runner after each step?
+- Should harnesses support an explicit long-running interrupt API, or is step-level timeout/cancellation enough for v0?
+- Should attachments be copied into the workspace by the runner before `runStep(...)`, or should each harness decide how to expose them?
+- Should the runner require all harnesses to emit file-change events, or should file diffs be captured independently by the runner after each step?

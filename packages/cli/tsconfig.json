@@ -6,7 +6,5 @@
     "rootDir": "src"
   },
   "include": ["src/**/*.ts"],
-  "references": [
-    { "path": "../runner" }
-  ]
+  "references": [{ "path": "../runner" }]
 }

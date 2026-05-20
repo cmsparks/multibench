@@ -19,7 +19,7 @@ multibench run
 multibench run tasks/memcached-command-rollback
 multibench run "tasks/**/*.task.ts"
 multibench run tasks --runs 3 --concurrent 2
-multibench run "tasks/**/*.task.ts" --harness ./harnesses/claude-code.harness.ts --harness.model claude-sonnet-4-5 --harness.api_key "$ANTHROPIC_API_KEY"
+multibench run "tasks/**/*.task.ts" --harness ./harnesses/claude-code/claude-code.harness.ts --harness.model claude-sonnet-4-5 --harness.api_key "$ANTHROPIC_API_KEY"
 ```
 
 The positional arguments are task globs or paths. If omitted, the CLI should use:
@@ -84,7 +84,7 @@ Selects the harness implementation file. This should be a path to a `.harness.ts
 Examples:
 
 ```sh
-multibench run --harness ./harnesses/claude-code.harness.ts
+multibench run --harness ./harnesses/claude-code/claude-code.harness.ts
 multibench run --harness ./harnesses/codex.harness.ts
 multibench run --harness ../custom/my-agent.harness.ts
 ```
@@ -114,7 +114,7 @@ Examples:
 
 ```sh
 multibench run tasks \
-  --harness ./harnesses/claude-code.harness.ts \
+  --harness ./harnesses/claude-code/claude-code.harness.ts \
   --harness.api_key "$ANTHROPIC_API_KEY" \
   --harness.model claude-sonnet-4-5 \
   --harness.permission_mode bypassPermissions \
@@ -134,10 +134,10 @@ The CLI should parse dotted harness options into an object:
 
 Values should be parsed conservatively:
 
-* `"true"` and `"false"` become booleans
-* numeric-looking values become numbers
-* repeated flags become arrays
-* everything else remains a string
+- `"true"` and `"false"` become booleans
+- numeric-looking values become numbers
+- repeated flags become arrays
+- everything else remains a string
 
 Nested dotted keys are allowed:
 
@@ -150,7 +150,7 @@ parses to:
 ```ts
 {
   env: {
-    ANTHROPIC_BASE_URL: "https://example.test"
+    ANTHROPIC_BASE_URL: "https://example.test";
   }
 }
 ```
@@ -254,7 +254,7 @@ Example:
 
 ```sh
 multibench run tasks \
-  --harness ./harnesses/claude-code.harness.ts \
+  --harness ./harnesses/claude-code/claude-code.harness.ts \
   --harness.api_key "$ANTHROPIC_API_KEY" \
   --harness.model claude-sonnet-4-5
 ```
@@ -264,7 +264,7 @@ The CLI parses:
 ```ts
 {
   taskPatterns: ["tasks"],
-  harnessPath: "./harnesses/claude-code.harness.ts",
+  harnessPath: "./harnesses/claude-code/claude-code.harness.ts",
   harnessOptions: {
     api_key: "...",
     model: "claude-sonnet-4-5",
@@ -374,5 +374,5 @@ Reads existing result artifacts and prints transcript, checks, scores, and artif
 
 ## open questions
 
-* Should `--runs` be renamed to `--attempts` for API consistency, or is `--runs` better for users?
-* Should `--concurrent` apply across all attempts globally, or should there also be per-task concurrency limits?
+- Should `--runs` be renamed to `--attempts` for API consistency, or is `--runs` better for users?
+- Should `--concurrent` apply across all attempts globally, or should there also be per-task concurrency limits?

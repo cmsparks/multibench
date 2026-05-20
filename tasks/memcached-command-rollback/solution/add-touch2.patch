@@ -1,0 +1,56 @@
+diff --git a/protocol_commands.txt b/protocol_commands.txt
+index 95d4e06..d5fd6f8 100644
+--- a/protocol_commands.txt
++++ b/protocol_commands.txt
+@@ -1,3 +1,4 @@
+ TOUCH
++TOUCH2
+ GET
+ SET
+diff --git a/doc/protocol.txt b/doc/protocol.txt
+index 0c5894d..a3898de 100644
+--- a/doc/protocol.txt
++++ b/doc/protocol.txt
+@@ -3,3 +3,21 @@ Text protocol command reference placeholder.
+ The starting fixture intentionally omits the new commands so benchmark checks
+ fail until an agent implements them.
++
++TOUCH2 command
++--------------
++
++touch2 <key> <exptime>\r\n
++
++Updates the expiration time of an existing item and returns the stored value
++with enough metadata to confirm the updated expiration.
++
++Response:
++  VALUE <key> <flags> <bytes>\r\n
++  <data block>\r\n
++  EXPTIME <exptime>\r\n
++  END\r\n
++
++If the item does not exist, TOUCH2 returns:
++  NOT_FOUND\r\n
+diff --git a/src/protocol.ts b/src/protocol.ts
+index 0f5b1da..aa476c3 100644
+--- a/src/protocol.ts
++++ b/src/protocol.ts
+@@ -45,6 +45,19 @@ export class MemcachedProtocol {
+       return `META ${item.key} flags=${item.flags} bytes=${item.value.length} exptime=${item.exptime} cas=${item.cas}`;
+     }
+ 
++    if (normalizedCommand === "TOUCH2") {
++      const [key, exptime] = parts;
++      const item = this.#items.get(key ?? "");
++      if (!item || exptime === undefined) {
++        return "NOT_FOUND";
++      }
++      item.exptime = Number(exptime);
++      item.cas = this.#nextCas;
++      this.#nextCas += 1;
++      return `VALUE ${item.key} ${item.flags} ${item.value.length}\n${item.value}\nEXPTIME ${item.exptime}\nEND`;
++    }
++
+     if (normalizedCommand === "TOUCH") {
+       const [key, exptime] = parts;
+       const item = this.#items.get(key ?? "");

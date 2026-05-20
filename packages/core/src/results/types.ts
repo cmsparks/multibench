@@ -26,6 +26,7 @@ export type TaskAttemptResult = {
   artifactDir: string;
   status: AttemptStatus;
   steps: StepRunResult[];
+  finalChecks: CheckResult[];
   score: TaskScore;
   startedAt?: string;
   completedAt?: string;

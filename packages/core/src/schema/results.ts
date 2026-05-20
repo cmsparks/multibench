@@ -3,7 +3,12 @@ import { attemptStatuses, harnessStepStatuses, runStatuses } from "../status.js"
 import { CheckResultSchema } from "./checks.js";
 import { isoDateTimeStringSchema, nonEmptyStringSchema } from "./common.js";
 import { HarnessStepOutputSchema } from "./harness.js";
-import { StepScoreSchema, SuiteSummarySchema, TaskScoreSchema, TaskSummarySchema } from "./scoring.js";
+import {
+  StepScoreSchema,
+  SuiteSummarySchema,
+  TaskScoreSchema,
+  TaskSummarySchema,
+} from "./scoring.js";
 
 export const StepRunResultSchema = z.object({
   stepId: nonEmptyStringSchema,
@@ -28,6 +33,7 @@ export const TaskAttemptResultSchema = z.object({
   artifactDir: nonEmptyStringSchema,
   status: z.enum(attemptStatuses),
   steps: z.array(StepRunResultSchema),
+  finalChecks: z.array(CheckResultSchema),
   score: TaskScoreSchema,
   startedAt: isoDateTimeStringSchema.optional(),
   completedAt: isoDateTimeStringSchema.optional(),

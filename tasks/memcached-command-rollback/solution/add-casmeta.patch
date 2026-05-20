@@ -1,0 +1,53 @@
+diff --git a/protocol_commands.txt b/protocol_commands.txt
+index d5fd6f8..bbfcfa0 100644
+--- a/protocol_commands.txt
++++ b/protocol_commands.txt
+@@ -1,4 +1,5 @@
+ TOUCH
+ TOUCH2
++CASMETA
+ GET
+ SET
+diff --git a/doc/protocol.txt b/doc/protocol.txt
+index a3898de..2fbad07 100644
+--- a/doc/protocol.txt
++++ b/doc/protocol.txt
+@@ -21,3 +21,16 @@ Response:
+ 
+ If the item does not exist, TOUCH2 returns:
+   NOT_FOUND\r\n
++
++CASMETA command
++---------------
++
++casmeta <key> <cas>\r\n
++
++Updates only the CAS metadata for an existing item. The stored value, flags,
++and expiration time are preserved.
++
++Response:
++  UPDATED\r\n
++
++If the item does not exist, CASMETA returns:
++  NOT_FOUND\r\n
+diff --git a/src/protocol.ts b/src/protocol.ts
+index aa476c3..59d86bb 100644
+--- a/src/protocol.ts
++++ b/src/protocol.ts
+@@ -45,6 +45,18 @@ export class MemcachedProtocol {
+       return `META ${item.key} flags=${item.flags} bytes=${item.value.length} exptime=${item.exptime} cas=${item.cas}`;
+     }
+ 
++    if (normalizedCommand === "CASMETA") {
++      const [key, cas] = parts;
++      const item = this.#items.get(key ?? "");
++      if (!item || cas === undefined) {
++        return "NOT_FOUND";
++      }
++      item.cas = Number(cas);
++      return "UPDATED";
++    }
++
+     if (normalizedCommand === "TOUCH2") {
+       const [key, exptime] = parts;
+       const item = this.#items.get(key ?? "");

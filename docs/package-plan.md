@@ -2,11 +2,11 @@
 
 multibench should be organized as a TypeScript monorepo with small packages and clear dependency direction. The main split is:
 
-* `@multibench/core` - shared types, schemas, scoring primitives, and result formats
-* `@multibench/tasks` - task authoring API and task loading
-* `@multibench/harness` - harness adapter SDK for custom harness implementations
-* `@multibench/runner` - benchmark execution engine
-* `@multibench/cli` - command-line interface
+- `@multibench/core` - shared types, schemas, scoring primitives, and result formats
+- `@multibench/tasks` - task authoring API and task loading
+- `@multibench/harness` - harness adapter SDK for custom harness implementations
+- `@multibench/runner` - benchmark execution engine
+- `@multibench/cli` - command-line interface
 
 The implementation checklist is tracked in [master-todo.md](./master-todo.md).
 
@@ -59,7 +59,7 @@ tasks/
     memcached-command-rollback.task.ts
     Dockerfile
     docker/
-    tests/
+    checks/
     fixture/
 
 test/
@@ -80,11 +80,11 @@ Lowest-level shared package. Everything else can depend on this package, but it 
 
 Contains:
 
-* task, instruction, harness, run, step, score, and artifact types
-* zod schemas for validating normalized definitions and result files
-* scoring primitives
-* result artifact formats
-* common enums and error types
+- task, instruction, harness, run, step, score, and artifact types
+- zod schemas for validating normalized definitions and result files
+- scoring primitives
+- result artifact formats
+- common enums and error types
 
 ### `@multibench/tasks`
 
@@ -92,12 +92,12 @@ Task authoring and loading package.
 
 Contains:
 
-* `defineTask(...)`
-* `step({ id, checks })\`...\``
-* repo and fixture helpers, such as `gitRepo(...)`
-* Docker environment helpers
-* check definition helpers
-* task normalization and validation
+- `defineTask(...)`
+- `step({ id, checks })\`...\``
+- repo and fixture helpers, such as `gitRepo(...)`
+- Docker environment helpers
+- check definition helpers
+- task normalization and validation
 
 The `step(...)` tagged template should automatically deindent and trim instruction text. Interpolation should be rejected by default so benchmark instructions remain static and auditable.
 
@@ -105,6 +105,9 @@ Example:
 
 ```ts
 import { defineTask, dockerEnvironment, gitRepo, step } from "@multibench/tasks";
+import { fileURLToPath } from "node:url";
+
+const checkPath = (file: string) => fileURLToPath(new URL(`./checks/${file}`, import.meta.url));
 
 export default defineTask({
   id: "memcached-command-rollback",
@@ -118,22 +121,24 @@ export default defineTask({
     dockerfile: "Dockerfile",
   }),
   instructions: [
-    step({ id: "add-touch2", checks: ["tests/touch2.test.ts"] })`
+    step({ id: "add-touch2", checks: [{ id: "touch2", command: ["tsx", checkPath("touch2.ts")], metadata: { runner: "host" } }] })`
       Add a TOUCH2 command that behaves like touch, but returns the remaining TTL.
       Include protocol docs and tests.
     `,
-    step({ id: "add-casmeta", checks: ["tests/casmeta.test.ts"] })`
+    step({ id: "add-casmeta", checks: [{ id: "casmeta", command: ["tsx", checkPath("casmeta.ts")], metadata: { runner: "host" } }] })`
       Add a CASMETA command that exposes CAS and item size metadata.
       Include tests.
     `,
-    step({ id: "remove-casmeta", checks: ["tests/final.test.ts"] })`
+    step({ id: "remove-casmeta", checks: [{ id: "final", command: ["tsx", checkPath("final.ts")], metadata: { runner: "host" } }] })`
       Remove only CASMETA. Keep TOUCH2 working and tested.
     `,
   ],
 });
 ```
 
-If `checks` is omitted, it should default to `tests/${id}.test.ts`.
+Task-owned TypeScript checks should live outside the fixture workspace so the agent cannot inspect
+the validation source. Host checks receive `MULTIBENCH_WORKSPACE_DIR` to inspect the attempted
+workspace.
 
 ### `@multibench/harness`
 
@@ -141,12 +146,12 @@ SDK for implementing harness adapters.
 
 Contains:
 
-* harness interface
-* `defineHarness(...)`
-* workspace contract
-* event protocol
-* process and PTY utilities if shared across harnesses
-* mock harness utilities for deterministic tests
+- harness interface
+- `defineHarness(...)`
+- workspace contract
+- event protocol
+- process and PTY utilities if shared across harnesses
+- mock harness utilities for deterministic tests
 
 The detailed harness lifecycle and Claude Code mapping are documented in [harness-api.md](./harness-api.md).
 
@@ -164,14 +169,14 @@ Execution engine.
 
 Contains:
 
-* loading tasks
-* preparing workspaces
-* running the instruction loop
-* invoking harness adapters
-* running step checks and final checks
-* scoring
-* writing run artifacts
-* replay support
+- loading tasks
+- preparing workspaces
+- running the instruction loop
+- invoking harness adapters
+- running step checks and final checks
+- scoring
+- writing run artifacts
+- replay support
 
 The runner should depend on interfaces, not concrete harness implementations.
 
@@ -183,11 +188,11 @@ Command-line entrypoint. The CLI should work like a test runner: given one or mo
 
 Contains commands such as:
 
-* `multibench run`
-* `multibench list`
-* `multibench validate`
-* `multibench score`
-* `multibench replay`
+- `multibench run`
+- `multibench list`
+- `multibench validate`
+- `multibench score`
+- `multibench replay`
 
 Default discovery:
 
@@ -241,12 +246,12 @@ tasks      harness
 
 Rules:
 
-* `@multibench/core` has no internal package dependencies.
-* `@multibench/tasks` depends on `@multibench/core`.
-* `@multibench/harness` depends on `@multibench/core`.
-* `@multibench/runner` depends on `@multibench/core`, `@multibench/tasks`, and `@multibench/harness`.
-* `@multibench/cli` depends on `@multibench/runner` and optionally concrete harness packages.
-* No package depends on `@multibench/cli`.
+- `@multibench/core` has no internal package dependencies.
+- `@multibench/tasks` depends on `@multibench/core`.
+- `@multibench/harness` depends on `@multibench/core`.
+- `@multibench/runner` depends on `@multibench/core`, `@multibench/tasks`, and `@multibench/harness`.
+- `@multibench/cli` depends on `@multibench/runner` and optionally concrete harness packages.
+- No package depends on `@multibench/cli`.
 
 ## notes
 
